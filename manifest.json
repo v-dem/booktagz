@@ -1,0 +1,29 @@
+{
+    "name": "BooktagZ",
+    "version": "0.1",
+    "manifest_version": 3,
+    "description": "BookmarkZ with TagZ",
+    "icons": {
+        "128": "assets/icons/icon128x128.png"
+    },
+    "action": {
+        "default_popup": "popup.html",
+        "default_icon": "assets/icons/icon128x128.png",
+        "default_title": "Add to BooktagZ"
+    },
+    "content_scripts": [
+        {
+            "matches": ["<all_urls>"],
+            "js": ["content.js"]
+        }
+    ],
+    "permissions": [
+        "activeTab",
+        "scripting", // to get webpage title and content
+        "bookmarks", // to catch add to bookmarks event
+        "storage" // to use chrome.storage.local
+    ],
+    "background": {
+        "service_worker": "background.js"
+    }
+}
