@@ -6,6 +6,163 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 });
 */
 
+function loadRecords(db, store, keys, callback, transaction = null) {
+    if (!transaction) {
+        transaction = db.transaction([ store ], 'readonly');
+    }
+
+    const objectStore = transaction.objectStore(store);
+
+    const results = {};
+    Promise.all(keys.map(key => {
+        return new Promise((resolve, reject) => {
+            const request = objectStore.get(key);
+            request.onsuccess = (event) => {
+                results[key] = event.target.result;
+                resolve();
+            };
+            request.onerror = (event) => {
+                console.error('Error fetching record:', event.target.error);
+                reject(event.target.error);
+            };
+        });
+    }))
+    .then(() => {
+        callback(results);
+    });
+}
+
+class Bookmark {
+    constructor(url, title, tags = []) {
+        this.url = url;
+        this.title = title;
+        this.tags = tags;
+    }
+}
+
+class Tag {
+    constructor(name, urls = []) {
+        this.name = name;
+        this.urls = urls;
+    }
+}
+
+let db = { //
+    loadTagsSet: function(tags, callback, transaction = null) {
+        callback([]);
+    },
+
+    loadBookmarksSet: function(urls, callback, transaction = null) {
+        callback([]);
+    },
+
+    addUrl: function(url, title, tags, callback = null) {
+        if (callback) {
+            callback();
+        }
+    }
+}
+
+const request = window.indexedDB.open('booktagzDb', 1);
+request.onerror = function(e) {
+    console.error('Why didn\'t you allow my web app to use IndexedDB?!');
+    console.log(e);
+}
+request.onsuccess = function(e) {
+    db = {
+        idb: e.target.result,
+
+        loadTagsSet: function(tags, callback, transaction = null) {
+            loadRecords(this.idb, 'tags', tags, callback, transaction);
+        },
+
+        loadBookmarksSet: function(urls, callback, transaction = null) {
+            loadRecords(this.idb, 'bookmarks', urls, callback, transaction);
+        },
+
+        addUrl: function(url, title, tags) {
+            return new Promise((resolve, reject) => {
+                // 1. Check all tags, if not exist create and add this url, if exist append this url
+                const transaction = this.idb.transaction([ 'tags', 'bookmarks', 'totals' ], 'readwrite');
+
+                transaction.oncomplete = resolve;
+                transaction.onerror = (e) => {
+                    reject(`tagsTransaction error: ${e.target.error?.message}`);
+                };
+
+                this.loadTagsSet(tags, (existingTags) => {
+                    const tagsStore = transaction.objectStore('tags');
+                    tags.forEach(tag => {
+                        if (typeof existingTags[tag] === 'undefined') {
+                            tagsStore.add({
+                                name: tag,
+                                urls: [ url ]
+                            });
+                        } else {
+                            existingTags[tag].urls.push(url);
+
+                            tagsStore.put(existingTags[tag]);
+                        }
+                    });
+
+                    // 2. Create a bookmark
+                    const bookmarksStore = transaction.objectStore('bookmarks');
+                    bookmarksStore.add({
+                        url: url,
+                        title: title,
+                        tags: tags
+                    });
+
+                    // 3.1. Update totals - read
+                    const totalsStore = transaction.objectStore('totals');
+                    const tagsObject = totalsStore.get(1);
+
+                    tagsObject.onsuccess = (e) => {
+                        // 3.1. Update totals - write
+                        console.log('tagsObject: ', tagsObject.result);
+
+                        const newTags = new Set([ ...tagsObject.result.tags, tags ]);
+                        tagsObject.result.tags = [ ...newTags ];
+
+                        totalsStore.put(tagsObject.result);
+                    };
+
+                    tagsObject.onerror = (e) => {
+                        reject(`tagsTransaction update read error: ${e.target.error?.message}`);
+                    };
+                }, transaction);
+            });
+        }
+    }
+
+    e.target.result.onerror = (e) => {
+        console.error(`Database error: ${e.target.error?.message}`);
+    };
+
+    // bookmarks (url (unique), title, tags[])
+
+    // tags (tag (unique), urls[])
+
+    // totals (1, tags[])
+}
+request.onupgradeneeded = (event) => {
+    // Save the IDBDatabase interface
+    const db = event.target.result;
+
+    console.log('Upgrade needed!');
+
+    db.createObjectStore('bookmarks', { keyPath: "url" });
+    db.createObjectStore('tags', { keyPath: "name" });
+    const totalsStore = db.createObjectStore('totals', { autoIncrement: true });
+
+    totalsStore.add({ tags: [] });
+
+    console.log('Stores created!');
+
+    // Create an objectStore for this database
+    // const objectStore = db.createObjectStore("name", { keyPath: "myKey" });
+};
+
 class BookmarkTagElement extends HTMLElement {
     constructor(tag) {
         super();
@@ -15,12 +172,12 @@ class BookmarkTagElement extends HTMLElement {
         this.querySelector('.bz-tag-name').textContent = tag;
     }
 
-    connectedCallback () {
-        console.log('Connected!')
-
+    connectedCallback() {
+/*
         this.addEventListener('click', event => {
             const { target } = event 
-        })
+        });
+*/
     }
 }
 
@@ -128,10 +285,10 @@ customElements.define('bookmark-tag', BookmarkTagElement);
     }
 })();
 
-const accordions = document.querySelectorAll(".accordion-collapse");
+const accordions = document.querySelectorAll('.accordion-collapse');
 let opening = false;
 accordions.forEach(function (el) {
-    el.addEventListener("hide.bs.collapse", (event) => {
+    el.addEventListener('hide.bs.collapse', (event) => {
         if (!opening) {
             event.preventDefault();
             event.stopPropagation();
@@ -140,14 +297,40 @@ accordions.forEach(function (el) {
         }
     });
 
-    el.addEventListener("show.bs.collapse", (event) => {
+    el.addEventListener('show.bs.collapse', (event) => {
         opening = true;
     });
 });
 
 document.querySelector('#importBookmarksAction').addEventListener('click', function() {
-    chrome.bookmarks.getTree(function(bookmarks) {
-        console.log("All bookmarks:", bookmarks);
+    this.disabled = true;
+
+    chrome.bookmarks.getTree(async function(bookmarkNodes) {
+        function processNode(node, tags = []) {
+            return new Promise(async function(resolve) {
+                if (node.url) {
+                    await db.addUrl(node.url, node.title, tags);
+                }
+
+                if (node.children) {
+                    const nextTags = node.title.length
+                        ? [ ...tags, node.title.toLowerCase() ]
+                        : [];
+
+                    node.children.forEach(async function(node) {
+                        await processNode(node, nextTags);
+                    });
+                }
+
+                resolve();
+            });
+        }
+
+        bookmarkNodes.forEach(async function(node) {
+            await processNode(node);
+        });
+
+        document.querySelector('#importBookmarksAction').disabled = false;
     });
 });
 
