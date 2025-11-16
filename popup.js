@@ -87,7 +87,7 @@ request.onsuccess = function(e) {
 
                 transaction.oncomplete = resolve;
                 transaction.onerror = (e) => {
-                    reject(`tagsTransaction error: ${e.target.error?.message}`);
+                    reject(`addUrl error: ${e.target.error?.message}`);
                 };
 
                 this.loadTagsSet(tags, (existingTags) => {
@@ -107,28 +107,25 @@ request.onsuccess = function(e) {
 
                     // 2. Create a bookmark
                     const bookmarksStore = transaction.objectStore('bookmarks');
-                    bookmarksStore.add({
-                        url: url,
-                        title: title,
-                        tags: tags
-                    });
+                    bookmarksStore.get(url).onsuccess = (e) => {
+                        if (!e.target.result) {
+                            bookmarksStore.add({
+                                url: url,
+                                title: title,
+                                tags: tags
+                            });
+                        }
+                    };
 
                     // 3.1. Update totals - read
                     const totalsStore = transaction.objectStore('totals');
-                    const tagsObject = totalsStore.get(1);
-
-                    tagsObject.onsuccess = (e) => {
+                    totalsStore.get(1).onsuccess = (e) => {
                         // 3.1. Update totals - write
-                        console.log('tagsObject: ', tagsObject.result);
+                        const tagsObject = e.target.result;
+                        const newTags = new Set([ ...tagsObject.tags, ...tags ]);
+                        tagsObject.tags = [ ...newTags ];
 
-                        const newTags = new Set([ ...tagsObject.result.tags, tags ]);
-                        tagsObject.result.tags = [ ...newTags ];
-
-                        totalsStore.put(tagsObject.result);
-                    };
-
-                    tagsObject.onerror = (e) => {
-                        reject(`tagsTransaction update read error: ${e.target.error?.message}`);
+                        totalsStore.put(tagsObject, 1);
                     };
                 }, transaction);
             });
@@ -146,21 +143,13 @@ request.onsuccess = function(e) {
     // totals (1, tags[])
 }
 request.onupgradeneeded = (event) => {
-    // Save the IDBDatabase interface
     const db = event.target.result;
-
-    console.log('Upgrade needed!');
 
     db.createObjectStore('bookmarks', { keyPath: "url" });
     db.createObjectStore('tags', { keyPath: "name" });
     const totalsStore = db.createObjectStore('totals', { autoIncrement: true });
 
     totalsStore.add({ tags: [] });
-
-    console.log('Stores created!');
-
-    // Create an objectStore for this database
-    // const objectStore = db.createObjectStore("name", { keyPath: "myKey" });
 };
 
 class BookmarkTagElement extends HTMLElement {
@@ -334,3 +323,4 @@ document.querySelector('#importBookmarksAction').addEventListener('click', funct
     });
 });
 
+                                   
