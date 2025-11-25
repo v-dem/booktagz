@@ -1,6 +1,7 @@
 {
   "dependencies": {
-    "@selectize/selectize": "^0.15.2",
-    "bootstrap-icons": "^1.13.1"
+    "bootstrap": "^5.3.8",
+    "bootstrap-icons": "^1.13.1",
+    "bootstrap5-tags": "^1.7.15"
   }
 }

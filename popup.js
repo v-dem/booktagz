@@ -1,3 +1,5 @@
+import Tags from './node_modules/bootstrap5-tags/tags.min.js';
+
 /*
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     if (request.type === 'popupData') {
@@ -56,9 +58,12 @@ let db = { //
         callback([]);
     },
 
-    addUrl: function(url, title, tags, callback = null) {
+    addUrl: function(url, title, tags) {
+    },
+
+    getAllTags: function(callback) {
         if (callback) {
-            callback();
+            callback([]);
         }
     }
 }
@@ -85,7 +90,9 @@ request.onsuccess = function(e) {
                 // 1. Check all tags, if not exist create and add this url, if exist append this url
                 const transaction = this.idb.transaction([ 'tags', 'bookmarks', 'totals' ], 'readwrite');
 
-                transaction.oncomplete = resolve;
+                transaction.oncomplete = function() {
+                    resolve(1);
+                };
                 transaction.onerror = (e) => {
                     reject(`addUrl error: ${e.target.error?.message}`);
                 };
@@ -117,10 +124,9 @@ request.onsuccess = function(e) {
                         }
                     };
 
-                    // 3.1. Update totals - read
+                    // 3. Update totals
                     const totalsStore = transaction.objectStore('totals');
                     totalsStore.get(1).onsuccess = (e) => {
-                        // 3.1. Update totals - write
                         const tagsObject = e.target.result;
                         const newTags = new Set([ ...tagsObject.tags, ...tags ]);
                         tagsObject.tags = [ ...newTags ];
@@ -129,6 +135,20 @@ request.onsuccess = function(e) {
                     };
                 }, transaction);
             });
+        },
+
+        getAllTags: function() {
+            return new Promise((resolve, reject) => {
+                const transaction = this.idb.transaction([ 'totals' ], 'readonly');
+                const totalsStore = transaction.objectStore('totals');
+                totalsStore.get(1).onsuccess = (e) => {
+                    resolve(e.target.result.tags);
+                };
+
+                transaction.onerror = (e) => {
+                    reject(`getAllTags error: ${e.target.error?.message}`);
+                };
+            });
         }
     }
 
@@ -136,19 +156,34 @@ request.onsuccess = function(e) {
         console.error(`Database error: ${e.target.error?.message}`);
     };
 
-    // bookmarks (url (unique), title, tags[])
+    db.getAllTags().then((tags) => {
+        console.log(tags);
 
-    // tags (tag (unique), urls[])
-
-    // totals (1, tags[])
+        Tags.init('#inputTags', {
+            'allowNew': true,
+            'allowClear': true,
+            'clearEnd': true,
+            'items': tags.reduce((obj, item, index) => {
+                obj[item] = item;
+                return obj;
+            }, {}),
+            'suggestionsThreshold': 1
+        });
+    });
 }
 request.onupgradeneeded = (event) => {
+    // Database schema:
+    // - bookmarks (url (unique), title, tags[])
+    // - tags (tag (unique), urls[])
+    // - totals (1, tags[])
+
     const db = event.target.result;
 
-    db.createObjectStore('bookmarks', { keyPath: "url" });
-    db.createObjectStore('tags', { keyPath: "name" });
-    const totalsStore = db.createObjectStore('totals', { autoIncrement: true });
+    db.createObjectStore('bookmarks', { keyPath: 'url' });
 
+    db.createObjectStore('tags', { keyPath: 'name' });
+
+    const totalsStore = db.createObjectStore('totals', { autoIncrement: true });
     totalsStore.add({ tags: [] });
 };
 
@@ -186,7 +221,8 @@ customElements.define('bookmark-tag', BookmarkTagElement);
 
         const activeTabId = tab.id;
 
-        chrome.scripting.executeScript({
+        chrome.scripting.executeScript(
+            {
                 target: { tabId: activeTabId },
                 function: () => {
                     return {
@@ -276,7 +312,7 @@ customElements.define('bookmark-tag', BookmarkTagElement);
 
 const accordions = document.querySelectorAll('.accordion-collapse');
 let opening = false;
-accordions.forEach(function (el) {
+accordions.forEach((el) => {
     el.addEventListener('hide.bs.collapse', (event) => {
         if (!opening) {
             event.preventDefault();
@@ -294,7 +330,7 @@ accordions.forEach(function (el) {
 document.querySelector('#importBookmarksAction').addEventListener('click', function() {
     this.disabled = true;
 
-    chrome.bookmarks.getTree(async function(bookmarkNodes) {
+    chrome.bookmarks.getTree((bookmarkNodes) => {
         function processNode(node, tags = []) {
             return new Promise(async function(resolve) {
                 if (node.url) {
@@ -315,11 +351,14 @@ document.querySelector('#importBookmarksAction').addEventListener('click', funct
             });
         }
 
-        bookmarkNodes.forEach(async function(node) {
-            await processNode(node);
+        const bookmarkNodePromises = [];
+        bookmarkNodes.forEach((node) => {
+            bookmarkNodePromises.push(processNode(node));
         });
 
-        document.querySelector('#importBookmarksAction').disabled = false;
+        Promise.all(bookmarkNodePromises).then(() => {
+            this.disabled = false;
+        });
     });
 });
 

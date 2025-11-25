@@ -7,10 +7,9 @@
 
         <title>BooktagZ</title>
 
-        <link href="assets/css/bootstrap.min.css" rel="stylesheet" />
-        <link href="node_modules/@selectize/selectize/dist/css/selectize.css" rel="stylesheet" />
-        <link href="node_modules/@selectize/selectize/dist/css/selectize.bootstrap5.css" rel="stylesheet" />
+        <link href="node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet" />
         <link href="node_modules/bootstrap-icons/font/bootstrap-icons.min.css" rel="stylesheet" />
+        <link href="node_modules/bootstrap5-tags/tags-pure.min.css" rel="stylesheet" />
 
         <style>
             .accordion-button {
@@ -38,9 +37,10 @@
         </style>
 
         <script src="assets/js/color-modes.js"></script>
-        <script src="assets/js/bootstrap.bundle.min.js"></script>
-        <script src="node_modules/jquery/dist/jquery.min.js"></script>
-        <script src="node_modules/@selectize/selectize/dist/js/selectize.min.js"></script>
+        <script src="node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<!--
+        <script type="module" src="node_modules/bootstrap5-tags/tags.min.js"></script>
+-->
     </head>
 
     <body style="width: 500px !important;">
@@ -113,7 +113,12 @@
                                 <div class="col">
                                     <div class="row">
                                         <div class="col">
-                                            <input type="text" id="inputTags" class="form-control form-control-sm" title="Search tags" />
+                                            <select id="inputTags" name="inputTags[]" class="tags-select" placeholder="Select tags..." multiple>
+                                                <option selected disabled hidden value="">Choose a tag...</option>
+                                            </select>
+<!--
+                                            <input type="text" id="inputTags" class="form-control form-control-sm" title="Select tags" placeholder="Select tags..." />
+-->
                                         </div>
                                     </div>
 
@@ -195,7 +200,7 @@
             </button>
         </template>
 
-        <script src="popup.js"></script>
+        <script src="popup.js" type="module"></script>
     </body>
 </html>
 
