@@ -157,19 +157,29 @@ request.onsuccess = function(e) {
     };
 
     db.getAllTags().then((tags) => {
-        console.log(tags);
-
         Tags.init('#inputTags', {
-            'allowNew': true,
-            'allowClear': true,
-            'clearEnd': true,
+            'suggestionsThreshold': 1,
+            'allowNew':             true,
+            'allowClear':           true,
+            'clearEnd':             true,
+            'startsWith':           true,
+            'addOnBlur':            true,
+
             'items': tags.reduce((obj, item, index) => {
                 obj[item] = item;
                 return obj;
             }, {}),
-            'suggestionsThreshold': 1
+
+            'onCreateItem': (item, a, b) => {
+                console.log('created:', item.dataset.value);
+            },
+            'onClearItem': (item, a, b) => {
+                console.log('removed:', item);
+            }
         });
     });
+
+    loadAndParsePage();
 }
 request.onupgradeneeded = (event) => {
     // Database schema:
@@ -193,7 +203,12 @@ class BookmarkTagElement extends HTMLElement {
 
         const templateContent = document.getElementById('bookmarkTagTemplate').content.cloneNode(true);
         this.appendChild(templateContent);
-        this.querySelector('.bz-tag-name').textContent = tag;
+        this.querySelector('.bz-tag-name').textContent = tag.word;
+        this.querySelector('button').classList.add(
+            tag.isHighlighted
+                ? 'btn-outline-primary'
+                : 'btn-outline-secondary'
+        );
     }
 
     connectedCallback() {
@@ -207,108 +222,129 @@ class BookmarkTagElement extends HTMLElement {
 
 customElements.define('bookmark-tag', BookmarkTagElement);
 
-(async() => { // Load page data manually
+async function loadAndParsePage() { // Load page data manually
     const [ tab ] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-    if (tab) {
-        console.log('booktagZ: URL: ', tab.url);
-        if (tab.url.match(/^chrome:/)) {
-            window.close();
+    if (!tab || tab.url.match(/^chrome:/)) {
+        document.querySelector('[data-bs-target="#flush-collapseNewBookmark"]').closest('.accordion-item').style.display = 'none';
 
-            return;
-        }
+        const searchBookmarksSection = new bootstrap.Collapse(document.querySelector('#flush-collapseSearchBookmarks'));
+        searchBookmarksSection.show();
 
-        document.querySelector('#inputUrl').value = tab.url;
-
-        const activeTabId = tab.id;
-
-        chrome.scripting.executeScript(
-            {
-                target: { tabId: activeTabId },
-                function: () => {
-                    return {
-                        title: document.title,
-                        text: document.documentElement.innerText
-                    };
-                }
-            },
-
-            (results) => {
-                if (results && results.length > 0) {
-                    const pageTitle = results[0].result.title;
-                    document.querySelector('#inputTitle').value = pageTitle;
-
-                    const pageText = results[0].result.text + ' ' + pageTitle;
-
-                    const words = pageText.replace(/[`~!@#$%^&*()|+=?;:…"«»„“—,<>\{\}\[\]\\\/]/gi, '').replace(/\s+/g, ' ').replace(/\n/g, ' ').split(' ');
-
-                    const wordsHash = {};
-                    words.forEach(word => {
-                        // Apply some basic filtering
-                        if (word.match(/^[.0-9_\-]+$/) && !word.match(/^\.[a-z]/i)) {
-                            return;
-                        }
-
-                        word = word.replace(/\.+$/, '');
-
-                        if (wordsHash[word]) {
-                            wordsHash[word] = wordsHash[word] + 1;
-                        } else {
-                            wordsHash[word] = 1;
-                        }
-                    });
-
-                    // Filter too short words (except abbreviations)
-                    const wordCountsArray = [];
-                    words.forEach(word => {
-                        if (wordsHash[word] && (word.length > 1) && ((word.length > 3) || (word === word.toUpperCase()))) {
-                            wordCountsArray.push({
-                                'word': word,
-                                'count': wordsHash[word]
-                            });
-
-                            delete wordsHash[word];
-                        }
-                    });
-
-                    // Make words lowercase & combine same words
-                    const wordsReducedHash = {};
-                    wordCountsArray.forEach((word) => {
-                        const wordLower = word.word.toLowerCase();
-                        if (typeof wordsReducedHash[wordLower] === 'undefined') {
-                            word.word = wordLower;
-                            wordsReducedHash[wordLower] = word;
-                        } else {
-                            wordsReducedHash[wordLower].count += word.count;
-                        }
-                    });
-
-                    const wordsReducedArray = Object.values(wordsReducedHash);
-
-                    wordsReducedArray.sort(function(a, b) {
-                        if (a.count < b.count) {
-                            return -1;
-                        }
-
-                        if (a.count > b.count) {
-                            return 1;
-                        }
-
-                        return 0;
-                    });
-
-                    console.log(wordsReducedArray);
-
-                    // If there are ANY words already in user tags then display them first
-
-                    const selectedWords = wordsReducedArray.slice(wordsReducedArray.length - 10).reverse();
-                    selectedWords.forEach((word) => {
-                        document.querySelector('#suggestedTagsPane').appendChild(new BookmarkTagElement(word.word));
-                    });
-                }
-            }
-        );
+        return;
     }
-})();
+
+    document.querySelector('#inputUrl').value = tab.url;
+
+    const activeTabId = tab.id;
+
+    chrome.scripting.executeScript(
+        {
+            target: { tabId: activeTabId },
+            function: () => {
+                return {
+                    title: document.title,
+                    text: document.documentElement.innerText
+                };
+            }
+        },
+
+        (results) => {
+            if (!results || !results.length) {
+                return;
+            }
+
+            const pageTitle = results[0].result.title;
+            document.querySelector('#inputTitle').value = pageTitle;
+
+            let pageText = results[0].result.text;
+            if (pageText.length > 65536) {
+                pageText = pageText.slice(0, 65536);
+            }
+            pageText = pageText + ' ' + pageTitle;
+
+            const words = pageText.replace(/[`~!@#$%^&*()|+=?;:…"«»„“—,<>\{\}\[\]\\\/]/gi, '').replace(/\s+/g, ' ').replace(/\n/g, ' ').split(' ');
+
+            const wordsHash = {};
+            words.forEach(word => {
+                // Apply some basic filtering
+                if (word.match(/^[.0-9_\-]+$/) && !word.match(/^\.[a-z]/i)) {
+                    return;
+                }
+
+                word = word.replace(/\.+$/, '');
+
+                if (wordsHash[word]) {
+                    wordsHash[word] = wordsHash[word] + 1;
+                } else {
+                    wordsHash[word] = 1;
+                }
+            });
+
+            // Filter too short words (except abbreviations)
+            const wordCountsArray = [];
+            words.forEach(word => {
+                if (wordsHash[word] && (word.length > 1) && ((word.length > 3) || (word === word.toUpperCase()))) {
+                    wordCountsArray.push({
+                        'word': word,
+                        'count': wordsHash[word]
+                    });
+
+                    delete wordsHash[word];
+                }
+            });
+
+            // Make words lowercase & combine same words
+            const wordsReducedHash = {};
+            let maxCount = 0;
+            wordCountsArray.forEach((word) => {
+                const wordLower = word.word.toLowerCase();
+                if (typeof wordsReducedHash[wordLower] === 'undefined') {
+                    word.word = wordLower;
+                    wordsReducedHash[wordLower] = word;
+                } else {
+                    wordsReducedHash[wordLower].count += word.count;
+                }
+
+                if (wordsReducedHash[wordLower].count > maxCount) {
+                    maxCount = wordsReducedHash[wordLower].count;
+                }
+            });
+
+            const tags = db.getAllTags().then((tags) => {
+                tags.forEach((tag) => {
+                    if (wordsReducedHash[tag]) {
+                        wordsReducedHash[tag].count = maxCount + 1;
+                        wordsReducedHash[tag].isHighlighted = true;
+                    }
+                });
+
+                const wordsReducedArray = Object.values(wordsReducedHash);
+
+                wordsReducedArray.sort(function(a, b) {
+                    if (a.count < b.count) {
+                        return -1;
+                    }
+
+                    if (a.count > b.count) {
+                        return 1;
+                    }
+
+                    return 0;
+                });
+
+                console.log(wordsReducedArray);
+
+                // If there are ANY words already in user tags then display them first
+
+                const selectedWords = wordsReducedArray.slice(wordsReducedArray.length - 10).reverse();
+                console.log(selectedWords);
+                selectedWords.forEach((word) => {
+                    document.querySelector('#suggestedTagsPane').appendChild(new BookmarkTagElement(word));
+                });
+            });
+        }
+    );
+}
 
 const accordions = document.querySelectorAll('.accordion-collapse');
 let opening = false;
@@ -360,6 +396,13 @@ document.querySelector('#importBookmarksAction').addEventListener('click', funct
             this.disabled = false;
         });
     });
+});
+
+document.addEventListener('click', (e) => {
+    const target = e.target.closest('.close-popup');
+    if (target) {
+        window.close();
+    }
 });
 
                                    

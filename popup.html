@@ -12,6 +12,14 @@
         <link href="node_modules/bootstrap5-tags/tags-pure.min.css" rel="stylesheet" />
 
         <style>
+            [data-bs-theme=dark] .accordion-item {
+                background: linear-gradient(to left, transparent, transparent, transparent, transparent, #333);
+            }
+
+            [data-bs-theme=light] .accordion-item {
+                background: linear-gradient(to left, transparent, transparent, transparent, transparent, #CCC);
+            }
+
             .accordion-button {
                 padding-top: 0.5rem;
                 padding-bottom: 0.5rem;
@@ -22,13 +30,22 @@
                 box-shadow: none; /* Optional: Also remove the box-shadow if present */
             }
 
-            .accordion-button:not(.collapsed) {
+            [data-bs-theme=dark] .accordion-button:not(.collapsed) {
                 background-color: #555;
                 color: #FFF;
             }
 
-            .accordion-button.collapsed:hover {
+            [data-bs-theme=dark] .accordion-button.collapsed:hover {
                 background-color: #333;
+            }
+
+            [data-bs-theme=light] .accordion-button:not(.collapsed) {
+                background-color: #FFF;
+                color: #555;
+            }
+
+            [data-bs-theme=light] .accordion-button.collapsed:hover {
+                background-color: #DDD;
             }
 
             .nav-link {
@@ -47,12 +64,12 @@
         <div class="accordion accordion-flush" id="accordionFlushExample">
             <div class="accordion-item">
                 <h2 class="accordion-header">
-                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseOne" aria-expanded="true" aria-controls="flush-collapseOne">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseNewBookmark" aria-expanded="true" aria-controls="flush-collapseNewBookmark">
                         <i class="bi bi-star-fill text-warning"></i>&nbsp;Add Bookmark
                     </button>
                 </h2>
 
-                <div id="flush-collapseOne" class="accordion-collapse collapse show" data-bs-parent="#accordionFlushExample">
+                <div id="flush-collapseNewBookmark" class="accordion-collapse collapse show" data-bs-parent="#accordionFlushExample">
                     <div class="accordion-body">
                         <form>
                             <div class="row p-1">
@@ -62,7 +79,7 @@
 
                                 <div class="col">
                                     <div class="input-group">
-                                        <input type="url" id="inputUrl" class="form-control form-control-sm" title="Page URL" />
+                                        <input type="url" id="inputUrl" class="form-control form-control-sm" title="Page URL" placeholder="Enter page URL" required />
 
                                         <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false"></button>
 
@@ -101,7 +118,7 @@
                                 </div>
 
                                 <div class="col">
-                                    <input type="text" id="inputTitle" class="form-control form-control-sm" title="Page title" />
+                                    <input type="text" id="inputTitle" class="form-control form-control-sm" title="Page title" placeholder="Enter page title" required />
                                 </div>
                             </div>
 
@@ -113,12 +130,9 @@
                                 <div class="col">
                                     <div class="row">
                                         <div class="col">
-                                            <select id="inputTags" name="inputTags[]" class="tags-select" placeholder="Select tags..." multiple>
+                                            <select id="inputTags" name="inputTags[]" class="tags-select" placeholder="Select or type in tags..." multiple title="Select or type in tags" required>
                                                 <option selected disabled hidden value="">Choose a tag...</option>
                                             </select>
-<!--
-                                            <input type="text" id="inputTags" class="form-control form-control-sm" title="Select tags" placeholder="Select tags..." />
--->
                                         </div>
                                     </div>
 
@@ -139,9 +153,9 @@
                                             </ul>
 
                                             <div class="tab-content" id="myTabContent">
-                                                <div class="tab-pane fade show active" id="suggestedTagsPane" role="tabpanel" aria-labelledby="suggestedTagsTab" tabindex="0"></div>
-                                                <div class="tab-pane fade" id="profile-tab-pane" role="tabpanel" aria-labelledby="profile-tab" tabindex="0">...</div>
-                                                <div class="tab-pane fade" id="contact-tab-pane" role="tabpanel" aria-labelledby="contact-tab" tabindex="0">...</div>
+                                                <div class="tab-pane p-1 fade show active" id="suggestedTagsPane" role="tabpanel" aria-labelledby="suggestedTagsTab" tabindex="0"></div>
+                                                <div class="tab-pane p-1 fade" id="profile-tab-pane" role="tabpanel" aria-labelledby="profile-tab" tabindex="0">...</div>
+                                                <div class="tab-pane p-1 fade" id="contact-tab-pane" role="tabpanel" aria-labelledby="contact-tab" tabindex="0">...</div>
                                             </div>
                                         </div>
                                     </div>
@@ -149,10 +163,12 @@
                             </div>
 
                             <div class="row p-1">
-                                <div class="col"></div>
+                                <div class="col">
+                                    <button class="btn btn-secondary close-popup" type="button"><i class="bi bi-x-lg"></i>&nbsp;Cancel</button>
+                                </div>
 
                                 <div class="col-auto">
-                                    <button class="btn btn-sm btn-outline-warning"><i class="bi bi-star-fill"></i>&nbsp;Add</button>
+                                    <button class="btn btn-warning"><i class="bi bi-star-fill"></i>&nbsp;Add</button>
                                 </div>
                             </div>
                         </form>
@@ -162,12 +178,12 @@
 
             <div class="accordion-item">
                 <h2 class="accordion-header">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseTwo" aria-expanded="false" aria-controls="flush-collapseTwo">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseSearchBookmarks" aria-expanded="false" aria-controls="flush-collapseSearchBookmarks">
                         <i class="bi bi-binoculars-fill text-success"></i>&nbsp;Search
                     </button>
                 </h2>
 
-                <div id="flush-collapseTwo" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                <div id="flush-collapseSearchBookmarks" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
                     <div class="accordion-body">
                     </div>
                 </div>
@@ -175,17 +191,17 @@
 
             <div class="accordion-item">
                 <h2 class="accordion-header">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseFour" aria-expanded="false" aria-controls="flush-collapseFour">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseSettings" aria-expanded="false" aria-controls="flush-collapseSettings">
                         <i class="bi bi-gear-fill text-info"></i>&nbsp;Settings
                     </button>
                 </h2>
 
-                <div id="flush-collapseFour" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                <div id="flush-collapseSettings" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
                     <div class="accordion-body">
                         <form>
                             <div class="row p-1">
                                 <div class="col text-end">
-                                    <button id="importBookmarksAction" class="btn btn-sm btn-outline-info" type="button"><i class="bi bi-box-arrow-in-down"></i>&nbsp;Import Bookmarks</button>
+                                    <button id="importBookmarksAction" class="btn btn-info" type="button"><i class="bi bi-box-arrow-in-down"></i>&nbsp;Import Bookmarks</button>
                                 </div>
                             </div>
                         </form>
@@ -195,7 +211,7 @@
         </div>
 
         <template id="bookmarkTagTemplate">
-            <button type="button" class="btn btn-sm btn-outline-secondary me-1 mt-1" data-bs-toggle="button">
+            <button type="button" class="btn btn-sm me-1 mt-1" data-bs-toggle="button">
                 <span class="bz-tag-name">CSS</span>
             </button>
         </template>
