@@ -49,24 +49,7 @@ class Tag {
     }
 }
 
-let db = { //
-    loadTagsSet: function(tags, callback, transaction = null) {
-        callback([]);
-    },
-
-    loadBookmarksSet: function(urls, callback, transaction = null) {
-        callback([]);
-    },
-
-    addUrl: function(url, title, tags) {
-    },
-
-    getAllTags: function(callback) {
-        if (callback) {
-            callback([]);
-        }
-    }
-}
+let db = null;
 
 const request = window.indexedDB.open('booktagzDb', 1);
 request.onerror = function(e) {
@@ -130,6 +113,10 @@ request.onsuccess = function(e) {
                         const tagsObject = e.target.result;
                         const newTags = new Set([ ...tagsObject.tags, ...tags ]);
                         tagsObject.tags = [ ...newTags ];
+                        tagsObject.recent = [ ...tagsObject.recent, ...newTags ];
+                        if (tagsObject.recent.length > 10) {
+                            tagsObject.recent = tagsObject.recent.slice(-10);
+                        }
 
                         totalsStore.put(tagsObject, 1);
                     };
@@ -137,18 +124,46 @@ request.onsuccess = function(e) {
             });
         },
 
-        getAllTags: function() {
+        getTotals: function() {
             return new Promise((resolve, reject) => {
                 const transaction = this.idb.transaction([ 'totals' ], 'readonly');
-                const totalsStore = transaction.objectStore('totals');
-                totalsStore.get(1).onsuccess = (e) => {
-                    resolve(e.target.result.tags);
+                const store = transaction.objectStore('totals');
+                store.get(1).onsuccess = (e) => {
+                    resolve(e.target.result);
                 };
 
                 transaction.onerror = (e) => {
-                    reject(`getAllTags error: ${e.target.error?.message}`);
+                    reject(`getTotals error: ${e.target.error?.message}`);
                 };
             });
+        },
+
+        loadMostUsed: function() {
+            const transaction = this.idb.transaction([ 'tags' ], 'readonly');
+            const store = transaction.objectStore('tags');
+            store.getAll().onsuccess = (e) => {
+                const mostUsed = e.target.result;
+                mostUsed.sort(function(a, b) {
+                    if (a.urls.length < b.urls.length) {
+                        return -1;
+                    }
+
+                    if (a.urls.length > b.urls.length) {
+                        return 1;
+                    }
+
+                    return 0;
+                });
+
+                mostUsed.slice(-10).reverse().forEach((tag) => {
+                    const word = {
+                        word:           tag.name,
+                        isHighlighted:  true
+                    };
+
+                    document.querySelector('#mostUsedTagsPane').appendChild(new BookmarkTagElement(word));
+                });
+            };
         }
     }
 
@@ -156,7 +171,7 @@ request.onsuccess = function(e) {
         console.error(`Database error: ${e.target.error?.message}`);
     };
 
-    db.getAllTags().then((tags) => {
+    db.getTotals().then((totals) => {
         Tags.init('#inputTags', {
             'suggestionsThreshold': 1,
             'allowNew':             true,
@@ -164,27 +179,47 @@ request.onsuccess = function(e) {
             'clearEnd':             true,
             'startsWith':           true,
             'addOnBlur':            true,
+            'searchLabel':          'Select or type in tags...',
+            'placeholder':          'Select or type in tags...',
 
-            'items': tags.reduce((obj, item, index) => {
+            'items': totals.tags.reduce((obj, item, index) => {
                 obj[item] = item;
                 return obj;
             }, {}),
 
             'onCreateItem': (item, a, b) => {
-                console.log('created:', item.dataset.value);
+                if (item.dataset.value) {
+                    tagsManager.check(item.dataset.value, false);
+                }
             },
+
+            'onSelectItem': (item, a, b) => {
+                tagsManager.check(item.value, false);
+            },
+
             'onClearItem': (item, a, b) => {
-                console.log('removed:', item);
+                tagsManager.uncheck(item);
             }
         });
+
+        totals.recent.forEach((tag) => {
+            const word = {
+                word:           tag,
+                isHighlighted:  true
+            };
+
+            document.querySelector('#recentTagsPane').appendChild(new BookmarkTagElement(word));
+        });
     });
+
+    db.loadMostUsed();
 
     loadAndParsePage();
 }
 request.onupgradeneeded = (event) => {
     // Database schema:
     // - bookmarks (url (unique), title, tags[])
-    // - tags (tag (unique), urls[])
+    // - tags (name (unique), urls[])
     // - totals (1, tags[])
 
     const db = event.target.result;
@@ -194,29 +229,75 @@ request.onupgradeneeded = (event) => {
     db.createObjectStore('tags', { keyPath: 'name' });
 
     const totalsStore = db.createObjectStore('totals', { autoIncrement: true });
-    totalsStore.add({ tags: [] });
+    totalsStore.add({
+        tags: [],
+        recent: []
+    });
 };
+
+const tagsManager = {
+    elements: [],
+
+    add: function(element) {
+        this.elements.push(element);
+    },
+
+    check: function(tag, shouldAddItem = true) {
+        this.elements.forEach((element) => {
+            if (element.dataset['tag'] === tag) {
+                element.querySelector('button').classList.add('active');
+                element.querySelector('button').ariaPressed = true;
+            }
+        });
+
+        if (shouldAddItem) {
+            const inputTags = Tags.getInstance(document.querySelector('#inputTags'));
+            inputTags.addItem(tag, tag);
+            inputTags.s.placeholder = '';
+        }
+    },
+
+    uncheck: function(tag) {
+        this.elements.forEach((element) => {
+            if (element.dataset['tag'] === tag) {
+                element.querySelector('button').classList.remove('active');
+                element.querySelector('button').ariaPressed = false;
+            }
+        });
+
+        const inputTags = Tags.getInstance(document.querySelector('#inputTags'));
+        inputTags.removeItem(tag);
+        if (inputTags.getSelectedValues().length === 0) {
+            inputTags.s.placeholder = 'Select or type in tags...';
+        }
+    }
+}
 
 class BookmarkTagElement extends HTMLElement {
     constructor(tag) {
         super();
 
-        const templateContent = document.getElementById('bookmarkTagTemplate').content.cloneNode(true);
+        const templateContent = document.querySelector('#bookmarkTagTemplate').content.cloneNode(true);
         this.appendChild(templateContent);
+        this.dataset['tag'] = tag.word;
         this.querySelector('.bz-tag-name').textContent = tag.word;
         this.querySelector('button').classList.add(
             tag.isHighlighted
                 ? 'btn-outline-primary'
                 : 'btn-outline-secondary'
         );
+
+        tagsManager.add(this);
     }
 
     connectedCallback() {
-/*
         this.addEventListener('click', event => {
-            const { target } = event 
+            if (this.querySelector('button').classList.contains('active')) {
+                tagsManager.check(this.dataset['tag']);
+            } else {
+                tagsManager.uncheck(this.dataset['tag']);
+            }
         });
-*/
     }
 }
 
@@ -248,7 +329,7 @@ async function loadAndParsePage() { // Load page data manually
             }
         },
 
-        (results) => {
+        async (results) => {
             if (!results || !results.length) {
                 return;
             }
@@ -310,37 +391,34 @@ async function loadAndParsePage() { // Load page data manually
                 }
             });
 
-            const tags = db.getAllTags().then((tags) => {
-                tags.forEach((tag) => {
-                    if (wordsReducedHash[tag]) {
-                        wordsReducedHash[tag].count = maxCount + 1;
-                        wordsReducedHash[tag].isHighlighted = true;
-                    }
-                });
+            const totals = await db.getTotals();
 
-                const wordsReducedArray = Object.values(wordsReducedHash);
+            totals.tags.forEach((tag) => {
+                if (wordsReducedHash[tag]) {
+                    wordsReducedHash[tag].count = maxCount + 1;
+                    wordsReducedHash[tag].isHighlighted = true;
+                }
+            });
 
-                wordsReducedArray.sort(function(a, b) {
-                    if (a.count < b.count) {
-                        return -1;
-                    }
+            const wordsReducedArray = Object.values(wordsReducedHash);
 
-                    if (a.count > b.count) {
-                        return 1;
-                    }
+            wordsReducedArray.sort(function(a, b) {
+                if (a.count < b.count) {
+                    return -1;
+                }
 
-                    return 0;
-                });
+                if (a.count > b.count) {
+                    return 1;
+                }
 
-                console.log(wordsReducedArray);
+                return 0;
+            });
 
-                // If there are ANY words already in user tags then display them first
+            // If there are ANY words already in user tags then display them first
 
-                const selectedWords = wordsReducedArray.slice(wordsReducedArray.length - 10).reverse();
-                console.log(selectedWords);
-                selectedWords.forEach((word) => {
-                    document.querySelector('#suggestedTagsPane').appendChild(new BookmarkTagElement(word));
-                });
+            const selectedWords = wordsReducedArray.slice(wordsReducedArray.length - 10).reverse();
+            selectedWords.forEach((word) => {
+                document.querySelector('#suggestedTagsPane').appendChild(new BookmarkTagElement(word));
             });
         }
     );
@@ -405,4 +483,3 @@ document.addEventListener('click', (e) => {
     }
 });
 
-                                   

@@ -13,11 +13,11 @@
 
         <style>
             [data-bs-theme=dark] .accordion-item {
-                background: linear-gradient(to left, transparent, transparent, transparent, transparent, #333);
+                background: linear-gradient(to left, transparent 80%, transparent, #333);
             }
 
             [data-bs-theme=light] .accordion-item {
-                background: linear-gradient(to left, transparent, transparent, transparent, transparent, #CCC);
+                background: linear-gradient(to left, transparent 80%, transparent, #CCC);
             }
 
             .accordion-button {
@@ -55,9 +55,6 @@
 
         <script src="assets/js/color-modes.js"></script>
         <script src="node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-<!--
-        <script type="module" src="node_modules/bootstrap5-tags/tags.min.js"></script>
--->
     </head>
 
     <body style="width: 500px !important;">
@@ -130,7 +127,7 @@
                                 <div class="col">
                                     <div class="row">
                                         <div class="col">
-                                            <select id="inputTags" name="inputTags[]" class="tags-select" placeholder="Select or type in tags..." multiple title="Select or type in tags" required>
+                                            <select id="inputTags" name="inputTags[]" class="tags-select" multiple title="Select or type in tags" required>
                                                 <option selected disabled hidden value="">Choose a tag...</option>
                                             </select>
                                         </div>
@@ -144,18 +141,18 @@
                                                 </li>
 
                                                 <li class="nav-item" role="presentation">
-                                                    <button class="nav-link pt-1 pb-1" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile-tab-pane" type="button" role="tab" aria-controls="profile-tab-pane" aria-selected="false">Recent</button>
+                                                    <button class="nav-link pt-1 pb-1" id="recentTagsTab" data-bs-toggle="tab" data-bs-target="#recentTagsPane" type="button" role="tab" aria-controls="recentTagsPane" aria-selected="false">Recent</button>
                                                 </li>
 
                                                 <li class="nav-item" role="presentation">
-                                                    <button class="nav-link pt-1 pb-1" id="contact-tab" data-bs-toggle="tab" data-bs-target="#contact-tab-pane" type="button" role="tab" aria-controls="contact-tab-pane" aria-selected="false">Frequent</button>
+                                                    <button class="nav-link pt-1 pb-1" id="mostUsedTagsTab" data-bs-toggle="tab" data-bs-target="#mostUsedTagsPane" type="button" role="tab" aria-controls="mostUsedTagsPane" aria-selected="false">Frequent</button>
                                                 </li>
                                             </ul>
 
                                             <div class="tab-content" id="myTabContent">
                                                 <div class="tab-pane p-1 fade show active" id="suggestedTagsPane" role="tabpanel" aria-labelledby="suggestedTagsTab" tabindex="0"></div>
-                                                <div class="tab-pane p-1 fade" id="profile-tab-pane" role="tabpanel" aria-labelledby="profile-tab" tabindex="0">...</div>
-                                                <div class="tab-pane p-1 fade" id="contact-tab-pane" role="tabpanel" aria-labelledby="contact-tab" tabindex="0">...</div>
+                                                <div class="tab-pane p-1 fade" id="recentTagsPane" role="tabpanel" aria-labelledby="recentTagsTab" tabindex="0"></div>
+                                                <div class="tab-pane p-1 fade" id="mostUsedTagsPane" role="tabpanel" aria-labelledby="mostUsedTagsTab" tabindex="0"></div>
                                             </div>
                                         </div>
                                     </div>
