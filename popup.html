@@ -13,11 +13,11 @@
 
         <style>
             [data-bs-theme=dark] .accordion-item {
-                background: linear-gradient(to left, transparent 80%, transparent, #333);
+                background: linear-gradient(to left, transparent 85%, #333);
             }
 
             [data-bs-theme=light] .accordion-item {
-                background: linear-gradient(to left, transparent 80%, transparent, #CCC);
+                background: linear-gradient(to left, transparent 85%, #EEE);
             }
 
             .accordion-button {
@@ -31,7 +31,7 @@
             }
 
             [data-bs-theme=dark] .accordion-button:not(.collapsed) {
-                background-color: #555;
+                background-color: #333;
                 color: #FFF;
             }
 
@@ -40,12 +40,12 @@
             }
 
             [data-bs-theme=light] .accordion-button:not(.collapsed) {
-                background-color: #FFF;
+                background-color: #EEE;
                 color: #555;
             }
 
             [data-bs-theme=light] .accordion-button.collapsed:hover {
-                background-color: #DDD;
+                background-color: #EEE;
             }
 
             .nav-link {
@@ -62,7 +62,7 @@
             <div class="accordion-item">
                 <h2 class="accordion-header">
                     <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseNewBookmark" aria-expanded="true" aria-controls="flush-collapseNewBookmark">
-                        <i class="bi bi-star-fill text-warning"></i>&nbsp;Add Bookmark
+                        <i class="bi bi-bookmark-star-fill text-warning"></i>&nbsp;Add Bookmark
                     </button>
                 </h2>
 
@@ -165,7 +165,7 @@
                                 </div>
 
                                 <div class="col-auto">
-                                    <button class="btn btn-warning"><i class="bi bi-star-fill"></i>&nbsp;Add</button>
+                                    <button class="btn btn-warning"><i class="bi bi-plus-lg"></i>&nbsp;Add</button>
                                 </div>
                             </div>
                         </form>
@@ -182,6 +182,57 @@
 
                 <div id="flush-collapseSearchBookmarks" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
                     <div class="accordion-body">
+                        <div class="row p-1">
+                            <div class="col-auto">
+                                <label for="searchTags" class="col-form-label pt-1"><i class="bi bi-tags"></i></label>
+                            </div>
+
+                            <div class="col">
+                                <div class="row">
+                                    <div class="col">
+                                        <select id="searchTags" name="searchTags[]" class="tags-select" multiple title="Select or type in tags" required>
+                                            <option selected disabled hidden value="">Choose a tag...</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="row pt-1 pb-1">
+                                    <div class="col">
+                                        <ul class="nav nav-tabs" id="searchTagsTab" role="tablist">
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link pt-1 pb-1 active" id="suggestedTagsSearchTab" data-bs-toggle="tab" data-bs-target="#suggestedTagsPane" type="button" role="tab" aria-controls="suggestedTagsSearchPane" aria-selected="true">Suggested</button>
+                                            </li>
+
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link pt-1 pb-1" id="recentTagsSearchTab" data-bs-toggle="tab" data-bs-target="#recentTagsSearchPane" type="button" role="tab" aria-controls="recentTagsSearchPane" aria-selected="false">Recent</button>
+                                            </li>
+
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link pt-1 pb-1" id="mostUsedTagsSearchTab" data-bs-toggle="tab" data-bs-target="#mostUsedTagsSearchPane" type="button" role="tab" aria-controls="mostUsedTagsSearchPane" aria-selected="false">Frequent</button>
+                                            </li>
+                                        </ul>
+
+                                        <div class="tab-content" id="searchTagsTabContent">
+                                            <div class="tab-pane p-1 fade show active" id="suggestedTagsSearchPane" role="tabpanel" aria-labelledby="suggestedTagsSearchTab" tabindex="0"></div>
+                                            <div class="tab-pane p-1 fade" id="recentTagsSearchPane" role="tabpanel" aria-labelledby="recentTagsSearchTab" tabindex="0"></div>
+                                            <div class="tab-pane p-1 fade" id="mostUsedTagsSearchPane" role="tabpanel" aria-labelledby="mostUsedTagsSearchTab" tabindex="0"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <table class="table table-striped table-hover table-borderless table-sm" style="width: inherit !important;">
+                            <tbody id="bookmarksFound">
+                            </tbody>
+                        </table>
+
+                        <template id="bookmarkRowTemplate">
+                            <tr>
+                                <td style="max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><a class="link-body-emphasis bookmark-link text-small" target="_blank"><small class="bookmark-name"></small></a></td>
+                                <td class="bookmark-actions" style="width: 1%; white-space: nowrap;"><a href="javascript:void(0)" class="icon-link"><i class="bi bi-three-dots-vertical"></i></a></td>
+                            </tr>
+                        </template>
                     </div>
                 </div>
             </div>

@@ -164,6 +164,27 @@ request.onsuccess = function(e) {
                     document.querySelector('#mostUsedTagsPane').appendChild(new BookmarkTagElement(word));
                 });
             };
+        },
+
+        loadTopBookmarks: function(tags = [], callback) {
+            if (tags.length) {
+                this.loadTagsSet(tags, (tagRecords) => {
+                    console.log(tagRecords);
+
+                    // TODO: Filter all urls for all tags
+                });
+            } else {
+                const transaction = this.idb.transaction([ 'bookmarks' ], 'readonly');
+                const store = transaction.objectStore('bookmarks');
+                store.getAll({
+                    count: 10,
+                    direction: 'next'
+                }).onsuccess = (e) => {
+                    console.log(e.target.result);
+
+                    callback(e.target.result);
+                };
+            }
         }
     }
 
@@ -202,6 +223,29 @@ request.onsuccess = function(e) {
             }
         });
 
+        Tags.init('#searchTags', {
+            'suggestionsThreshold': 1,
+            'allowClear':           true,
+            'clearEnd':             true,
+            'startsWith':           true,
+            'addOnBlur':            true,
+            'searchLabel':          'Select or type in tags...',
+            'placeholder':          'Select or type in tags...',
+
+            'items': totals.tags.reduce((obj, item, index) => {
+                obj[item] = item;
+                return obj;
+            }, {}),
+
+            'onSelectItem': (item, a, b) => {
+                // tagsManager.check(item.value, false);
+            },
+
+            'onClearItem': (item, a, b) => {
+                // tagsManager.uncheck(item);
+            }
+        });
+
         totals.recent.forEach((tag) => {
             const word = {
                 word:           tag,
@@ -212,9 +256,24 @@ request.onsuccess = function(e) {
         });
     });
 
+    loadAndParsePage();
+
     db.loadMostUsed();
 
-    loadAndParsePage();
+    db.loadTopBookmarks([], (bookmarks) => {
+        document.querySelector('#bookmarksFound').innerHTML = '';
+
+        bookmarks.forEach((bookmark) => {
+            const templateContent = document.querySelector('#bookmarkRowTemplate').content.cloneNode(true);
+
+            templateContent.querySelector('tr').dataset['url'] = bookmark.url;
+            templateContent.querySelector('tr').title = bookmark.url;
+            templateContent.querySelector('.bookmark-name').textContent = bookmark.title;
+            templateContent.querySelector('.bookmark-link').href = bookmark.url;
+
+            document.querySelector('#bookmarksFound').appendChild(templateContent);
+        });
+    });
 }
 request.onupgradeneeded = (event) => {
     // Database schema:
