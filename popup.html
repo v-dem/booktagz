@@ -200,11 +200,11 @@
                                     <div class="col">
                                         <ul class="nav nav-tabs" id="searchTagsTab" role="tablist">
                                             <li class="nav-item" role="presentation">
-                                                <button class="nav-link pt-1 pb-1 active" id="suggestedTagsSearchTab" data-bs-toggle="tab" data-bs-target="#suggestedTagsPane" type="button" role="tab" aria-controls="suggestedTagsSearchPane" aria-selected="true">Suggested</button>
+                                                <button class="nav-link pt-1 pb-1 disabled" id="suggestedTagsSearchTab" data-bs-toggle="tab" data-bs-target="#suggestedTagsSearchPane" type="button" role="tab" aria-controls="suggestedTagsSearchPane" aria-selected="false">Suggested</button>
                                             </li>
 
                                             <li class="nav-item" role="presentation">
-                                                <button class="nav-link pt-1 pb-1" id="recentTagsSearchTab" data-bs-toggle="tab" data-bs-target="#recentTagsSearchPane" type="button" role="tab" aria-controls="recentTagsSearchPane" aria-selected="false">Recent</button>
+                                                <button class="nav-link pt-1 pb-1 active" id="recentTagsSearchTab" data-bs-toggle="tab" data-bs-target="#recentTagsSearchPane" type="button" role="tab" aria-controls="recentTagsSearchPane" aria-selected="true">Recent</button>
                                             </li>
 
                                             <li class="nav-item" role="presentation">
@@ -229,8 +229,21 @@
 
                         <template id="bookmarkRowTemplate">
                             <tr>
-                                <td style="max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><a class="link-body-emphasis bookmark-link text-small" target="_blank"><small class="bookmark-name"></small></a></td>
-                                <td class="bookmark-actions" style="width: 1%; white-space: nowrap;"><a href="javascript:void(0)" class="icon-link"><i class="bi bi-three-dots-vertical"></i></a></td>
+                                <td style="max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    <a class="link-body-emphasis bookmark-link text-small" target="_blank"><small class="bookmark-name"></small></a>
+                                </td>
+
+                                <td class="bookmark-actions" style="width: 1%; white-space: nowrap;">
+                                    <div class="dropdown">
+                                        <a href="javascript:void(0)" class="icon-link" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></a>
+                                        <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item" href="javascript:void(0)"><i class="bi bi-folder2-open text-success"></i>&nbsp;Open</a></li>
+                                            <li><hr class="dropdown-divider" /></li>
+                                            <li><a class="dropdown-item" href="javascript:void(0)"><i class="bi bi-pencil text-warning"></i>&nbsp;Edit</a></li>
+                                            <li><a class="dropdown-item" href="javascript:void(0)"><i class="bi bi-trash text-danger"></i>&nbsp;Remove</a></li>
+                                        </ul>
+                                    </div>
+                                </td>
                             </tr>
                         </template>
                     </div>

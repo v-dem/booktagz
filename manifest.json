@@ -19,6 +19,8 @@
     ],
     "permissions": [
         "activeTab",
+        "tabs",
+        "webNavigation",
         "scripting", // to get webpage title and content
         "bookmarks", // to catch add to bookmarks event
         "storage" // to use chrome.storage.local
