@@ -370,10 +370,15 @@ async function loadAndParsePage() { // Load page data manually
         const searchBookmarksSection = new bootstrap.Collapse(document.querySelector('#flush-collapseSearchBookmarks'));
         searchBookmarksSection.show();
 
+        document.querySelector('#searchTags').focus();
+
         return;
     }
 
     document.querySelector('#inputUrl').value = tab.url;
+    document.querySelector('#inputTags').focus();
+
+    const hostname = (new URL(tab.url)).hostname.toLowerCase().replace(/^www\./, '');
 
     const activeTabId = tab.id;
 
@@ -454,10 +459,20 @@ async function loadAndParsePage() { // Load page data manually
 
             totals.tags.forEach((tag) => {
                 if (wordsReducedHash[tag]) {
-                    wordsReducedHash[tag].count = maxCount + 1;
+                    wordsReducedHash[tag].count = maxCount + 2; // Tags which were found in the database will be displayed first
                     wordsReducedHash[tag].isHighlighted = true;
                 }
             });
+
+            if (wordsReducedHash[hostname]) {
+                wordsReducedHash[hostname].count = maxCount + 3; // If hostname tag is in the database it will be displayed at the very beginning of all
+            } else {
+                wordsReducedHash[hostname] = {
+                    word:           hostname,
+                    count:          maxCount + 1, // If hostname tag is not yet in the database, it will appear after tags already found
+                    isHighlighted:  false
+                };
+            }
 
             const wordsReducedArray = Object.values(wordsReducedHash);
 

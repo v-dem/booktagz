@@ -51,6 +51,19 @@
             .nav-link {
                 font-size: 0.8rem;
             }
+
+            .mode-add,
+            .mode-edit {
+                display: none;
+            }
+
+            form[data-mode=add] .mode-add {
+                display: block;
+            }
+
+            form[data-mode=edit] .mode-edit {
+                display: block;
+            }
         </style>
 
         <script src="assets/js/color-modes.js"></script>
@@ -60,18 +73,18 @@
     <body style="width: 500px !important;">
         <div class="accordion accordion-flush" id="accordionFlushExample">
             <div class="accordion-item">
+                <form data-mode="add">
                 <h2 class="accordion-header">
                     <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseNewBookmark" aria-expanded="true" aria-controls="flush-collapseNewBookmark">
-                        <i class="bi bi-bookmark-star-fill text-warning"></i>&nbsp;Add Bookmark
+                        <i class="bi bi-bookmark-star-fill text-warning"></i>&nbsp;<span class="mode-add">Add</span><span class="mode-edit">Edit</span>&nbsp;Bookmark
                     </button>
                 </h2>
 
                 <div id="flush-collapseNewBookmark" class="accordion-collapse collapse show" data-bs-parent="#accordionFlushExample">
                     <div class="accordion-body">
-                        <form>
                             <div class="row p-1">
                                 <div class="col-auto">
-                                    <label for="inputUrl" class="col-form-label pt-1"><i class="bi bi-crosshair"></i></label>
+                                    <label for="inputUrl" class="col-form-label pt-1"><i class="bi bi-link"></i></label>
                                 </div>
 
                                 <div class="col">
@@ -111,7 +124,7 @@
 
                             <div class="row p-1">
                                 <div class="col-auto">
-                                    <label for="inputTitle" class="col-form-label pt-1"><i class="bi bi-braces"></i></label>
+                                    <label for="inputTitle" class="col-form-label pt-1"><i class="bi bi-info-circle"></i></label>
                                 </div>
 
                                 <div class="col">
@@ -161,16 +174,21 @@
 
                             <div class="row p-1">
                                 <div class="col">
-                                    <button class="btn btn-secondary close-popup" type="button"><i class="bi bi-x-lg"></i>&nbsp;Cancel</button>
+                                    <button class="btn btn-outline-danger btn-sm close-popup mode-edit" type="button"><i class="bi bi-trash"></i>&nbsp;Remove</button>
                                 </div>
 
                                 <div class="col-auto">
-                                    <button class="btn btn-warning"><i class="bi bi-plus-lg"></i>&nbsp;Add</button>
+                                    <div class="btn-group" role="group" aria-label="Actions">
+                                        <button class="btn btn-outline-secondary btn-sm close-popup" type="button"><i class="bi bi-x-lg"></i>&nbsp;Cancel</button>
+                                        <button class="btn btn-warning btn-sm mode-add" type="submit"><i class="bi bi-plus-lg"></i>&nbsp;Add</button>
+                                        <button class="btn btn-warning btn-sm mode-edit" type="submit"><i class="bi bi-arrow-repeat"></i>&nbsp;Update</button>
+                                    </div>
                                 </div>
                             </div>
-                        </form>
+                        <!--/form-->
                     </div>
                 </div>
+                </form>
             </div>
 
             <div class="accordion-item">
@@ -222,7 +240,7 @@
                             </div>
                         </div>
 
-                        <table class="table table-striped table-hover table-borderless table-sm" style="width: inherit !important;">
+                        <table class="table table-striped table-hover table-borderless table-sm mb-0" style="width: inherit !important;">
                             <tbody id="bookmarksFound">
                             </tbody>
                         </table>
@@ -261,8 +279,14 @@
                     <div class="accordion-body">
                         <form>
                             <div class="row p-1">
-                                <div class="col text-end">
-                                    <button id="importBookmarksAction" class="btn btn-info" type="button"><i class="bi bi-box-arrow-in-down"></i>&nbsp;Import Bookmarks</button>
+                                <div class="col">
+                                </div>
+
+                                <div class="col-auto">
+                                    <div class="btn-group" role="group" aria-label="Basic example">
+                                        <button class="btn btn-outline-secondary btn-sm close-popup" type="button"><i class="bi bi-x-lg"></i>&nbsp;Cancel</button>
+                                        <button id="importBookmarksAction" class="btn btn-sm btn-info" type="button" title="Import bookmarks from Chrome"><i class="bi bi-box-arrow-in-down"></i>&nbsp;Import</button>
+                                    </div>
                                 </div>
                             </div>
                         </form>
