@@ -1,4 +1,5 @@
 import Tags from './node_modules/bootstrap5-tags/tags.min.js';
+import { PagedArrayDataSource, PaginationBlockElement } from './assets/components/bs-pagination-block/component.js';
 
 /*
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
@@ -166,7 +167,7 @@ request.onsuccess = function(e) {
             };
         },
 
-        loadTopBookmarks: function(tags = [], callback) {
+        loadBookmarksFiltered: function(tags = [], callback) {
             if (tags.length) {
                 this.loadTagsSet(tags, (tagRecords) => {
                     console.log(tagRecords);
@@ -176,12 +177,7 @@ request.onsuccess = function(e) {
             } else {
                 const transaction = this.idb.transaction([ 'bookmarks' ], 'readonly');
                 const store = transaction.objectStore('bookmarks');
-                store.getAll({
-                    count: 10,
-                    direction: 'next'
-                }).onsuccess = (e) => {
-                    console.log(e.target.result);
-
+                store.getAll().onsuccess = (e) => {
                     callback(e.target.result);
                 };
             }
@@ -193,7 +189,7 @@ request.onsuccess = function(e) {
     };
 
     db.getTotals().then((totals) => {
-        Tags.init('#inputTags', {
+        Tags.init('#' + tagsInput.id, {
             'suggestionsThreshold': 1,
             'allowNew':             true,
             'allowClear':           true,
@@ -260,19 +256,8 @@ request.onsuccess = function(e) {
 
     db.loadMostUsed();
 
-    db.loadTopBookmarks([], (bookmarks) => {
-        document.querySelector('#bookmarksFound').innerHTML = '';
-
-        bookmarks.forEach((bookmark) => {
-            const templateContent = document.querySelector('#bookmarkRowTemplate').content.cloneNode(true);
-
-            templateContent.querySelector('tr').dataset['url'] = bookmark.url;
-            templateContent.querySelector('tr').title = bookmark.url;
-            templateContent.querySelector('.bookmark-name').textContent = bookmark.title;
-            templateContent.querySelector('.bookmark-link').href = bookmark.url;
-
-            document.querySelector('#bookmarksFound').appendChild(templateContent);
-        });
+    db.loadBookmarksFiltered([], (bookmarks) => {
+        document.querySelector('bs-pagination-block').setDataProvider(new PagedArrayDataSource(bookmarks));
     });
 }
 request.onupgradeneeded = (event) => {
@@ -362,6 +347,11 @@ class BookmarkTagElement extends HTMLElement {
 
 customElements.define('bookmark-tag', BookmarkTagElement);
 
+const urlInput = document.querySelector('#inputUrl');
+const titleInput = document.querySelector('#inputTitle');
+const tagsInput = document.querySelector('#inputTags');
+const tagsSearch = document.querySelector('#searchTags');
+
 async function loadAndParsePage() { // Load page data manually
     const [ tab ] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
     if (!tab || tab.url.match(/^chrome:/)) {
@@ -370,13 +360,13 @@ async function loadAndParsePage() { // Load page data manually
         const searchBookmarksSection = new bootstrap.Collapse(document.querySelector('#flush-collapseSearchBookmarks'));
         searchBookmarksSection.show();
 
-        document.querySelector('#searchTags').focus();
+        tagsSearch.focus();
 
         return;
     }
 
-    document.querySelector('#inputUrl').value = tab.url;
-    document.querySelector('#inputTags').focus();
+    urlInput.value = tab.url;
+    tagsInput.focus();
 
     const hostname = (new URL(tab.url)).hostname.toLowerCase().replace(/^www\./, '');
 
@@ -399,7 +389,7 @@ async function loadAndParsePage() { // Load page data manually
             }
 
             const pageTitle = results[0].result.title;
-            document.querySelector('#inputTitle').value = pageTitle;
+            titleInput.value = pageTitle;
 
             let pageText = results[0].result.text;
             if (pageText.length > 65536) {

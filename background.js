@@ -1,4 +1,4 @@
-/*
+
 chrome.bookmarks.onCreated.addListener((id, bookmark) => {
     console.log("Bookmark created!");
     console.log("ID:", id);
@@ -14,7 +14,7 @@ chrome.bookmarks.onCreated.addListener((id, bookmark) => {
         chrome.runtime.sendMessage({ type: 'popupData', data: bookmark });
     }, 100);
 });
-*/
+
 
 const ICONS_DEFAULT = {
     '128': 'assets/icons/icon128x128.png'

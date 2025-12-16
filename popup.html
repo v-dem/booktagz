@@ -64,6 +64,16 @@
             form[data-mode=edit] .mode-edit {
                 display: block;
             }
+
+            .bookmark-row td {
+                padding-top: 1px;
+                padding-bottom: 1px;
+            }
+
+            bookmark-tag button {
+                padding-top: 1px !important;
+                padding-bottom: 1px !important;
+            }
         </style>
 
         <script src="assets/js/color-modes.js"></script>
@@ -90,7 +100,7 @@
                                 <div class="col">
                                     <div class="input-group">
                                         <input type="url" id="inputUrl" class="form-control form-control-sm" title="Page URL" placeholder="Enter page URL" required />
-
+<!--
                                         <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false"></button>
 
                                         <ul class="dropdown-menu dropdown-menu-end">
@@ -118,6 +128,7 @@
                                                 <a class="dropdown-item" href="javascript:void(0)">Restore</a>
                                             </li>
                                         </ul>
+-->
                                     </div>
                                 </div>
                             </div>
@@ -231,8 +242,8 @@
                                         </ul>
 
                                         <div class="tab-content" id="searchTagsTabContent">
-                                            <div class="tab-pane p-1 fade show active" id="suggestedTagsSearchPane" role="tabpanel" aria-labelledby="suggestedTagsSearchTab" tabindex="0"></div>
-                                            <div class="tab-pane p-1 fade" id="recentTagsSearchPane" role="tabpanel" aria-labelledby="recentTagsSearchTab" tabindex="0"></div>
+                                            <div class="tab-pane p-1 fade" id="suggestedTagsSearchPane" role="tabpanel" aria-labelledby="suggestedTagsSearchTab" tabindex="0"></div>
+                                            <div class="tab-pane p-1 fade show active" id="recentTagsSearchPane" role="tabpanel" aria-labelledby="recentTagsSearchTab" tabindex="0"></div>
                                             <div class="tab-pane p-1 fade" id="mostUsedTagsSearchPane" role="tabpanel" aria-labelledby="mostUsedTagsSearchTab" tabindex="0"></div>
                                         </div>
                                     </div>
@@ -240,15 +251,17 @@
                             </div>
                         </div>
 
-                        <table class="table table-striped table-hover table-borderless table-sm mb-0" style="width: inherit !important;">
+                        <table class="table table-striped table-hover table-borderless table-sm" style="width: inherit !important;">
                             <tbody id="bookmarksFound">
                             </tbody>
                         </table>
 
                         <template id="bookmarkRowTemplate">
-                            <tr>
+                            <tr class="bookmark-row" data-attribute="title" data-attribute-property="url">
                                 <td style="max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                    <a class="link-body-emphasis bookmark-link text-small" target="_blank"><small class="bookmark-name"></small></a>
+                                    <a class="link-body-emphasis bookmark-link text-small" target="_blank" data-attribute="href" data-attribute-property="url">
+                                        <small data-property="title" class="bookmark-name"></small>
+                                    </a>
                                 </td>
 
                                 <td class="bookmark-actions" style="width: 1%; white-space: nowrap;">
@@ -264,6 +277,8 @@
                                 </td>
                             </tr>
                         </template>
+
+                        <bs-pagination-block data-size="10" data-container="#bookmarksFound" data-row-template="#bookmarkRowTemplate" />
                     </div>
                 </div>
             </div>
