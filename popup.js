@@ -1,4 +1,5 @@
 import Tags from './node_modules/bootstrap5-tags/tags.min.js';
+// import XRegExp from './node_modules/xregexp/xregexp-all.js';
 import { PagedArrayDataSource, PaginationBlockElement } from './assets/components/bs-pagination-block/component.js';
 
 /*
@@ -397,7 +398,8 @@ async function loadAndParsePage() { // Load page data manually
             }
             pageText = pageText + ' ' + pageTitle;
 
-            const words = pageText.replace(/[`~!@#$%^&*()|+=?;:…"«»„“—,<>\{\}\[\]\\\/]/gi, '').replace(/\s+/g, ' ').replace(/\n/g, ' ').split(' ');
+            const words = pageText.replace(/[`~!@#$%^&*()|+=?;:…"«»„“—−,<>\{\}\[\]\\\/]/gi, '').replace(/\s+/g, ' ').replace(/\n/g, ' ').split(' ');
+            // const words = pageText.split(/\s+/).filter((word) => (new XRegExp('^\\p{L}')).test(word)); // TODO: Use xregexp
 
             const wordsHash = {};
             words.forEach(word => {

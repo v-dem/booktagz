@@ -34,9 +34,12 @@ class PaginationBlockElement extends HTMLElement {
 
         this.dataProvider = new PagedArrayDataSource([], 10);
         this.currentPage = 1;
+
+        console.log('constructor');
     }
 
     async connectedCallback() {
+        console.log('connectedCallback');
         const response = await fetch(import.meta.url.replace(/\.js/, '.html'));
 
         this.innerHTML = await response.text();
@@ -44,40 +47,29 @@ class PaginationBlockElement extends HTMLElement {
         this.addEventListener('click', function(e) {
             const target = e.target.closest('.page-link');
             if (target) {
-                this.switchToPage(target.dataset['page']);
+                if (target.classList.contains('prev') && (this.currentPage > 1)) {
+                    this.switchToPage(this.currentPage - 1);
+                } else if (target.classList.contains('next') && (this.currentPage < this.dataProvider.getPagesCount())) {
+                    this.switchToPage(this.currentPage + 1);
+                } else {
+                    this.switchToPage(target.dataset['page']);
+                }
             }
         });
     }
 
     setDataProvider(dataProvider) {
+        console.log('setDataProvider');
         this.dataProvider = dataProvider;
 
-        this.renderPageLinks();
         this.switchToPage(1);
     }
 
-    renderPageLinks() {
-        const container = this.querySelector('ul');
-        container.replaceChildren(
-            container.firstElementChild,
-            container.lastElementChild
-        );
-
-        for (let i = 0; i < Math.min(10, this.dataProvider.getPagesCount()); i++) {
-            const templateContent = this.querySelector('#paginationLinkTemplate').content.cloneNode(true);
-            templateContent.querySelector('.page-link').textContent = i + 1;
-            templateContent.querySelector('.page-link').dataset['page'] = i + 1;
-
-            container.insertBefore(templateContent, container.lastElementChild);
-        }
-
-        setTimeout(() => {
-            console.log(container.getBoundingClientRect().width, container.parentElement.getBoundingClientRect().width, container.parentElement.parentElement.getBoundingClientRect().width);
-        }, 0);
-    }
-
     switchToPage(page) {
-        this.currentPage = page;
+        console.log('switchToPage');
+        this.currentPage = +page;
+
+        this.renderPageLinks();
 
         const container = this.querySelector('ul');
         container.firstElementChild.classList.remove('disabled');
@@ -90,23 +82,116 @@ class PaginationBlockElement extends HTMLElement {
         }
 
         this.querySelector('.page-item.active')?.classList.remove('active');
+
         this.querySelector(`.page-item:has(.page-link[data-page="${this.currentPage}"])`).classList.add('active');
 
         this.renderPageRows();
     }
 
+    renderPageLinks() {
+        console.log('renderPageLinks');
+
+        const container = this.querySelector('ul');
+
+        // Remove all links except first (Previous link) and last (Next link)
+        container.replaceChildren(
+            container.firstElementChild,
+            container.lastElementChild
+        );
+
+        const createPageLink = (page) => {
+            const templateContent = this.querySelector('#paginationLinkTemplate').content.cloneNode(true);
+            templateContent.querySelector('.page-link').textContent = page;
+            templateContent.querySelector('.page-link').dataset['page'] = page;
+
+            return templateContent;
+        }
+
+        const createPageLinkDivider = () => {
+            return this.querySelector('#paginationLinkRangeDividerTemplate').content.cloneNode(true);
+        }
+
+        const renderPageLinksPart = (startPage, count) => {
+            for (let i = 0; i < count; i++) {
+                container.insertBefore(createPageLink(startPage + i), container.lastElementChild);
+            }
+        }
+
+        const sideCellsCount = 1;
+        const centerSideCellsCount = 1;
+        const centerCellsCount = centerSideCellsCount * 2 + 1;
+        if (sideCellsCount * 2 + centerCellsCount >= this.dataProvider.getPagesCount()) {
+            for (let i = 0; i < this.dataProvider.getPagesCount(); i++) {
+                container.insertBefore(createPageLink(i + 1), container.lastElementChild);
+            }
+        } else {
+            const leftDistance = this.currentPage - centerSideCellsCount - sideCellsCount - 1;
+            const rightDistance = this.dataProvider.getPagesCount() - this.currentPage - centerSideCellsCount - sideCellsCount - 1;
+
+            renderPageLinksPart(1, sideCellsCount); // Left end page links
+
+            if (leftDistance > 1) {
+                if (leftDistance > 4) {
+                    container.insertBefore(createPageLinkDivider(), container.lastElementChild);
+                    container.insertBefore(createPageLink(sideCellsCount + Math.ceil(leftDistance / 2)), container.lastElementChild);
+                    container.insertBefore(createPageLinkDivider(), container.lastElementChild);
+                } else {
+                    container.insertBefore(createPageLinkDivider(), container.lastElementChild);
+                }
+            } else if (leftDistance == 1) {
+                renderPageLinksPart(sideCellsCount + 1, 1);
+            }
+
+            let start = this.currentPage - centerSideCellsCount;
+            let len = centerCellsCount;
+            if (sideCellsCount + 1 > this.currentPage - centerSideCellsCount) {
+                start = sideCellsCount + 1;
+                len = this.currentPage - sideCellsCount + centerSideCellsCount;
+            }
+            if (start + centerCellsCount >= this.dataProvider.getPagesCount()) {
+                len = this.dataProvider.getPagesCount() - start - 1;
+            }
+
+            renderPageLinksPart(start, len); // Render center page links
+
+            if (rightDistance > 1) {
+                if (rightDistance > 4) {
+                    container.insertBefore(createPageLinkDivider(), container.lastElementChild);
+                    container.insertBefore(createPageLink(this.currentPage + centerSideCellsCount + Math.ceil(rightDistance / 2)), container.lastElementChild);
+                    container.insertBefore(createPageLinkDivider(), container.lastElementChild);
+                } else {
+                    container.insertBefore(createPageLinkDivider(), container.lastElementChild);
+                }
+            } else if (rightDistance == 1) {
+                renderPageLinksPart(this.dataProvider.getPagesCount() - sideCellsCount - 1, 1);
+            }
+
+            renderPageLinksPart(this.dataProvider.getPagesCount() - sideCellsCount, sideCellsCount); // Right end page links
+        }
+    }
+
     renderPageRows() {
+        console.log('renderPageRows');
         const container = document.querySelector(this.dataset['container']);
         container.replaceChildren();
 
         const pages = this.dataProvider.getPage(this.currentPage - 1);
         for (let i = 0; i < pages.length; i++) {
             const templateContent = document.querySelector(this.dataset['rowTemplate']).content.cloneNode(true);
-            templateContent.querySelectorAll('[data-property]').forEach(function(el) {
-                el.textContent = pages[i][el.dataset['property']];
+
+            // Set element textContent from row object property specified
+            templateContent.querySelectorAll('[data-content-property]').forEach(function(el) {
+                el.textContent = pages[i][el.dataset['contentProperty']];
             });
+
+            // Set element attribute from row object property specified
             templateContent.querySelectorAll('[data-attribute]').forEach(function(el) {
                 el.setAttribute(el.dataset['attribute'], pages[i][el.dataset['attributeProperty']]);
+            });
+
+            // Set dataset value from row object property specified
+            templateContent.querySelectorAll('[data-dataset]').forEach(function(el) {
+                el.dataset[el.dataset['dataset']] = pages[i][el.dataset['datasetProperty']];
             });
 
             container.appendChild(templateContent);
