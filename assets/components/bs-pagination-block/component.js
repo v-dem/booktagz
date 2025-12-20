@@ -34,12 +34,9 @@ class PaginationBlockElement extends HTMLElement {
 
         this.dataProvider = new PagedArrayDataSource([], 10);
         this.currentPage = 1;
-
-        console.log('constructor');
     }
 
     async connectedCallback() {
-        console.log('connectedCallback');
         const response = await fetch(import.meta.url.replace(/\.js/, '.html'));
 
         this.innerHTML = await response.text();
@@ -59,14 +56,12 @@ class PaginationBlockElement extends HTMLElement {
     }
 
     setDataProvider(dataProvider) {
-        console.log('setDataProvider');
         this.dataProvider = dataProvider;
 
         this.switchToPage(1);
     }
 
     switchToPage(page) {
-        console.log('switchToPage');
         this.currentPage = +page;
 
         this.renderPageLinks();
@@ -89,8 +84,6 @@ class PaginationBlockElement extends HTMLElement {
     }
 
     renderPageLinks() {
-        console.log('renderPageLinks');
-
         const container = this.querySelector('ul');
 
         // Remove all links except first (Previous link) and last (Next link)
@@ -171,7 +164,6 @@ class PaginationBlockElement extends HTMLElement {
     }
 
     renderPageRows() {
-        console.log('renderPageRows');
         const container = document.querySelector(this.dataset['container']);
         container.replaceChildren();
 
