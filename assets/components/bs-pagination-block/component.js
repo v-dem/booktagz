@@ -93,7 +93,7 @@ class PaginationBlockElement extends HTMLElement {
         );
 
         const createPageLink = (page) => {
-            const templateContent = this.querySelector('#paginationLinkTemplate').content.cloneNode(true);
+            const templateContent = this.querySelector('.bs-pagination-link-template').content.cloneNode(true);
             templateContent.querySelector('.page-link').textContent = page;
             templateContent.querySelector('.page-link').dataset['page'] = page;
 
@@ -101,7 +101,7 @@ class PaginationBlockElement extends HTMLElement {
         }
 
         const createPageLinkDivider = () => {
-            return this.querySelector('#paginationLinkRangeDividerTemplate').content.cloneNode(true);
+            return this.querySelector('.bs-pagination-link-range-divider-template').content.cloneNode(true);
         }
 
         const renderPageLinksPart = (startPage, count) => {
@@ -119,7 +119,7 @@ class PaginationBlockElement extends HTMLElement {
             }
         } else {
             const leftDistance = this.currentPage - centerSideCellsCount - sideCellsCount - 1;
-            const rightDistance = this.dataProvider.getPagesCount() - this.currentPage - centerSideCellsCount - sideCellsCount - 1;
+            const rightDistance = this.dataProvider.getPagesCount() - this.currentPage - centerSideCellsCount - sideCellsCount;
 
             renderPageLinksPart(1, sideCellsCount); // Left end page links
 
@@ -142,7 +142,7 @@ class PaginationBlockElement extends HTMLElement {
                 len = this.currentPage - sideCellsCount + centerSideCellsCount;
             }
             if (start + centerCellsCount >= this.dataProvider.getPagesCount()) {
-                len = this.dataProvider.getPagesCount() - start - 1;
+                len = this.dataProvider.getPagesCount() - start;
             }
 
             renderPageLinksPart(start, len); // Render center page links
@@ -156,10 +156,10 @@ class PaginationBlockElement extends HTMLElement {
                     container.insertBefore(createPageLinkDivider(), container.lastElementChild);
                 }
             } else if (rightDistance == 1) {
-                renderPageLinksPart(this.dataProvider.getPagesCount() - sideCellsCount - 1, 1);
+                renderPageLinksPart(this.dataProvider.getPagesCount() - sideCellsCount, 1);
             }
 
-            renderPageLinksPart(this.dataProvider.getPagesCount() - sideCellsCount, sideCellsCount); // Right end page links
+            renderPageLinksPart(this.dataProvider.getPagesCount() - sideCellsCount + 1, sideCellsCount); // Right end page links
         }
     }
 

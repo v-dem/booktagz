@@ -1,40 +1,57 @@
-import Tags from './node_modules/bootstrap5-tags/tags.min.js';
 // import XRegExp from './node_modules/xregexp/xregexp-all.js';
+import Tags from './node_modules/bootstrap5-tags/tags.min.js';
+import Repository from './scripts/Repository.js';
+import extractTags from './scripts/extractTags.js';
 import { PagedArrayDataSource, PaginationBlockElement } from './assets/components/bs-pagination-block/component.js';
 
-/*
+EventTarget.prototype.$on = function(events, handlerOrSelector, handler = null) {
+    const wrapper = (e) => {
+        if (typeof(handlerOrSelector) === 'function') {
+            return handlerOrSelector.call(this, e);
+        }
+
+        const target = e.target.closest(handlerOrSelector);
+        if (target && handler) {
+            return handler.call(target, e);
+        }
+    };
+
+    if (!Array.isArray(events)) {
+        events = [ events ];
+    }
+
+    events.forEach((event) => {
+        this.addEventListener(events, wrapper);
+    });
+
+    return this;
+}
+
+Document.prototype.$ = DocumentFragment.prototype.$ = Element.prototype.$ = function(selector, callback = null) {
+    const element = this.querySelector(selector);
+
+    if (callback) {
+        callback(element);
+    }
+
+    return this.querySelector(selector);
+}
+
+Document.prototype.$$ = DocumentFragment.prototype.$$ = Element.prototype.$$ = function(selector, callback = null) {
+    const elements = this.querySelectorAll(selector);
+
+    if (callback) {
+        elements.forEach(callback);
+    }
+
+    return elements;
+}
+
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     if (request.type === 'popupData') {
         console.log('Data received:', request.data);
     }
 });
-*/
-
-function loadRecords(db, store, keys, callback, transaction = null) {
-    if (!transaction) {
-        transaction = db.transaction([ store ], 'readonly');
-    }
-
-    const objectStore = transaction.objectStore(store);
-
-    const results = {};
-    Promise.all(keys.map(key => {
-        return new Promise((resolve, reject) => {
-            const request = objectStore.get(key);
-            request.onsuccess = (event) => {
-                results[key] = event.target.result;
-                resolve();
-            };
-            request.onerror = (event) => {
-                console.error('Error fetching record:', event.target.error);
-                reject(event.target.error);
-            };
-        });
-    }))
-    .then(() => {
-        callback(results);
-    });
-}
 
 class Bookmark {
     constructor(url, title, tags = []) {
@@ -51,194 +68,49 @@ class Tag {
     }
 }
 
-let db = null;
-
-const request = window.indexedDB.open('booktagzDb', 1);
-request.onerror = function(e) {
-    console.error('Why didn\'t you allow my web app to use IndexedDB?!');
-    console.log(e);
-}
-request.onsuccess = function(e) {
-    db = {
-        idb: e.target.result,
-
-        loadTagsSet: function(tags, callback, transaction = null) {
-            loadRecords(this.idb, 'tags', tags, callback, transaction);
-        },
-
-        loadBookmarksSet: function(urls, callback, transaction = null) {
-            loadRecords(this.idb, 'bookmarks', urls, callback, transaction);
-        },
-
-        addUrl: function(url, title, tags) {
-            return new Promise((resolve, reject) => {
-                // 1. Check all tags, if not exist create and add this url, if exist append this url
-                const transaction = this.idb.transaction([ 'tags', 'bookmarks', 'totals' ], 'readwrite');
-
-                transaction.oncomplete = function() {
-                    resolve(1);
-                };
-                transaction.onerror = (e) => {
-                    reject(`addUrl error: ${e.target.error?.message}`);
-                };
-
-                this.loadTagsSet(tags, (existingTags) => {
-                    const tagsStore = transaction.objectStore('tags');
-                    tags.forEach(tag => {
-                        if (typeof existingTags[tag] === 'undefined') {
-                            tagsStore.add({
-                                name: tag,
-                                urls: [ url ]
-                            });
-                        } else {
-                            existingTags[tag].urls.push(url);
-
-                            tagsStore.put(existingTags[tag]);
-                        }
-                    });
-
-                    // 2. Create a bookmark
-                    const bookmarksStore = transaction.objectStore('bookmarks');
-                    bookmarksStore.get(url).onsuccess = (e) => {
-                        if (!e.target.result) {
-                            bookmarksStore.add({
-                                url: url,
-                                title: title,
-                                tags: tags
-                            });
-                        }
-                    };
-
-                    // 3. Update totals
-                    const totalsStore = transaction.objectStore('totals');
-                    totalsStore.get(1).onsuccess = (e) => {
-                        const tagsObject = e.target.result;
-                        const newTags = new Set([ ...tagsObject.tags, ...tags ]);
-                        tagsObject.tags = [ ...newTags ];
-                        tagsObject.recent = [ ...tagsObject.recent, ...newTags ];
-                        if (tagsObject.recent.length > 10) {
-                            tagsObject.recent = tagsObject.recent.slice(-10);
-                        }
-
-                        totalsStore.put(tagsObject, 1);
-                    };
-                }, transaction);
-            });
-        },
-
-        getTotals: function() {
-            return new Promise((resolve, reject) => {
-                const transaction = this.idb.transaction([ 'totals' ], 'readonly');
-                const store = transaction.objectStore('totals');
-                store.get(1).onsuccess = (e) => {
-                    resolve(e.target.result);
-                };
-
-                transaction.onerror = (e) => {
-                    reject(`getTotals error: ${e.target.error?.message}`);
-                };
-            });
-        },
-
-        loadMostUsed: function() {
-            const transaction = this.idb.transaction([ 'tags' ], 'readonly');
-            const store = transaction.objectStore('tags');
-            store.getAll().onsuccess = (e) => {
-                const mostUsed = e.target.result;
-                mostUsed.sort(function(a, b) {
-                    if (a.urls.length < b.urls.length) {
-                        return -1;
-                    }
-
-                    if (a.urls.length > b.urls.length) {
-                        return 1;
-                    }
-
-                    return 0;
-                });
-
-                mostUsed.slice(-10).reverse().forEach((tag) => {
-                    const word = {
-                        word:           tag.name,
-                        isHighlighted:  true
-                    };
-
-                    document.querySelector('#mostUsedTagsPane').appendChild(new BookmarkTagElement(word));
-                });
-            };
-        },
-
-        loadBookmarksFiltered: function(tags = [], callback) {
-            if (tags.length) {
-                this.loadTagsSet(tags, (tagRecords) => {
-                    console.log(tagRecords);
-
-                    // TODO: Filter all urls for all tags
-                });
-            } else {
-                const transaction = this.idb.transaction([ 'bookmarks' ], 'readonly');
-                const store = transaction.objectStore('bookmarks');
-                store.getAll().onsuccess = (e) => {
-                    callback(e.target.result);
-                };
-            }
-        }
-    }
-
-    e.target.result.onerror = (e) => {
-        console.error(`Database error: ${e.target.error?.message}`);
-    };
-
-    db.getTotals().then((totals) => {
+const repository = new Repository(function() {
+    repository.getTotals().then((totals) => {
         Tags.init('#' + tagsInput.id, {
-            'suggestionsThreshold': 1,
-            'allowNew':             true,
-            'allowClear':           true,
-            'clearEnd':             true,
-            'startsWith':           true,
-            'addOnBlur':            true,
-            'searchLabel':          'Select or type in tags...',
-            'placeholder':          'Select or type in tags...',
-
-            'items': totals.tags.reduce((obj, item, index) => {
+            'items': totals.tags.reduce((obj, item) => {
                 obj[item] = item;
                 return obj;
             }, {}),
 
-            'onCreateItem': (item, a, b) => {
+            'inputFilter': (input) => {
+                return input.trim().toLowerCase();
+            },
+
+            'onCreateItem': (item, t) => {
                 if (item.dataset.value) {
+/*
+                    item.dataset.value = item.dataset.value.toLowerCase();
+                    item.value = item.textContent = item.dataset.value;
+                    console.log(item, t);
+*/
                     tagsManager.check(item.dataset.value, false);
                 }
             },
 
-            'onSelectItem': (item, a, b) => {
+            'onSelectItem': (item) => {
                 tagsManager.check(item.value, false);
             },
 
-            'onClearItem': (item, a, b) => {
+            'onClearItem': (item) => {
                 tagsManager.uncheck(item);
             }
         });
 
-        Tags.init('#searchTags', {
-            'suggestionsThreshold': 1,
-            'allowClear':           true,
-            'clearEnd':             true,
-            'startsWith':           true,
-            'addOnBlur':            true,
-            'searchLabel':          'Select or type in tags...',
-            'placeholder':          'Select or type in tags...',
-
-            'items': totals.tags.reduce((obj, item, index) => {
+        Tags.init('#' + tagsSearch.id, {
+            'items': totals.tags.reduce((obj, item) => {
                 obj[item] = item;
                 return obj;
             }, {}),
 
-            'onSelectItem': (item, a, b) => {
+            'onSelectItem': (item) => {
                 // tagsManager.check(item.value, false);
             },
 
-            'onClearItem': (item, a, b) => {
+            'onClearItem': (item) => {
                 // tagsManager.uncheck(item);
             }
         });
@@ -249,36 +121,27 @@ request.onsuccess = function(e) {
                 isHighlighted:  true
             };
 
-            document.querySelector('#recentTagsPane').appendChild(new BookmarkTagElement(word));
+            document.$('#recentTagsPane').appendChild(new BookmarkTagElement(word));
         });
     });
 
     loadAndParsePage();
 
-    db.loadMostUsed();
+    repository.loadMostUsed().then((mostUsed) => {
+        mostUsed.forEach((tag) => {
+            const word = {
+                word:           tag.name,
+                isHighlighted:  true
+            };
 
-    db.loadBookmarksFiltered([], (bookmarks) => {
-        document.querySelector('bs-pagination-block').setDataProvider(new PagedArrayDataSource(bookmarks));
+            document.$('#mostUsedTagsPane').appendChild(new BookmarkTagElement(word));
+        });
     });
-}
-request.onupgradeneeded = (event) => {
-    // Database schema:
-    // - bookmarks (url (unique), title, tags[])
-    // - tags (name (unique), urls[])
-    // - totals (1, tags[])
 
-    const db = event.target.result;
-
-    db.createObjectStore('bookmarks', { keyPath: 'url' });
-
-    db.createObjectStore('tags', { keyPath: 'name' });
-
-    const totalsStore = db.createObjectStore('totals', { autoIncrement: true });
-    totalsStore.add({
-        tags: [],
-        recent: []
+    repository.loadBookmarksFiltered([], (bookmarks) => {
+        document.$('bs-pagination-block').setDataProvider(new PagedArrayDataSource(bookmarks));
     });
-};
+});
 
 const tagsManager = {
     elements: [],
@@ -290,13 +153,15 @@ const tagsManager = {
     check: function(tag, shouldAddItem = true) {
         this.elements.forEach((element) => {
             if (element.dataset['tag'] === tag) {
-                element.querySelector('button').classList.add('active');
-                element.querySelector('button').ariaPressed = true;
+                element.$('button', (el) => {
+                    el.classList.add('active');
+                    el.ariaPressed = true;
+                });
             }
         });
 
         if (shouldAddItem) {
-            const inputTags = Tags.getInstance(document.querySelector('#inputTags'));
+            const inputTags = Tags.getInstance(tagsInput);
             inputTags.addItem(tag, tag);
             inputTags.s.placeholder = '';
         }
@@ -305,15 +170,17 @@ const tagsManager = {
     uncheck: function(tag) {
         this.elements.forEach((element) => {
             if (element.dataset['tag'] === tag) {
-                element.querySelector('button').classList.remove('active');
-                element.querySelector('button').ariaPressed = false;
+                element.$('button', (el) => {
+                    el.classList.remove('active');
+                    el.ariaPressed = false;
+                });
             }
         });
 
-        const inputTags = Tags.getInstance(document.querySelector('#inputTags'));
+        const inputTags = Tags.getInstance(tagsInput);
         inputTags.removeItem(tag);
         if (inputTags.getSelectedValues().length === 0) {
-            inputTags.s.placeholder = 'Select or type in tags...';
+            inputTags.s.placeholder = tagsInput.$('option:first-child').label;
         }
     }
 }
@@ -322,11 +189,11 @@ class BookmarkTagElement extends HTMLElement {
     constructor(tag) {
         super();
 
-        const templateContent = document.querySelector('#bookmarkTagTemplate').content.cloneNode(true);
+        const templateContent = document.$('#bookmarkTagTemplate').content.cloneNode(true);
         this.appendChild(templateContent);
         this.dataset['tag'] = tag.word;
-        this.querySelector('.bz-tag-name').textContent = tag.word;
-        this.querySelector('button').classList.add(
+        this.$('.bz-tag-name').textContent = tag.word;
+        this.$('button').classList.add(
             tag.isHighlighted
                 ? 'btn-outline-primary'
                 : 'btn-outline-secondary'
@@ -336,8 +203,8 @@ class BookmarkTagElement extends HTMLElement {
     }
 
     connectedCallback() {
-        this.addEventListener('click', event => {
-            if (this.querySelector('button').classList.contains('active')) {
+        this.$on('click', (e) => {
+            if (this.$('button').classList.contains('active')) {
                 tagsManager.check(this.dataset['tag']);
             } else {
                 tagsManager.uncheck(this.dataset['tag']);
@@ -346,19 +213,21 @@ class BookmarkTagElement extends HTMLElement {
     }
 }
 
-customElements.define('bookmark-tag', BookmarkTagElement);
+customElements.define('bz-bookmark-tag', BookmarkTagElement);
 
-const urlInput = document.querySelector('#inputUrl');
-const titleInput = document.querySelector('#inputTitle');
-const tagsInput = document.querySelector('#inputTags');
-const tagsSearch = document.querySelector('#searchTags');
+const urlInput = document.$('#inputUrl');
+const titleInput = document.$('#inputTitle');
+const tagsInput = document.$('#inputTags');
+const tagsSearch = document.$('#searchTags');
+
+const bookmarkForm = document.$('#bookmarkForm');
 
 async function loadAndParsePage() { // Load page data manually
     const [ tab ] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
     if (!tab || tab.url.match(/^chrome:/)) {
-        document.querySelector('[data-bs-target="#flush-collapseNewBookmark"]').closest('.accordion-item').style.display = 'none';
+        document.$('[data-bs-target="#flush-collapseNewBookmark"]').closest('.accordion-item').style.display = 'none';
 
-        const searchBookmarksSection = new bootstrap.Collapse(document.querySelector('#flush-collapseSearchBookmarks'));
+        const searchBookmarksSection = new bootstrap.Collapse(document.$('#flush-collapseSearchBookmarks'));
         searchBookmarksSection.show();
 
         tagsSearch.focus();
@@ -389,132 +258,41 @@ async function loadAndParsePage() { // Load page data manually
                 return;
             }
 
-            const pageTitle = results[0].result.title;
-            titleInput.value = pageTitle;
+            const totals = await repository.getTotals();
+            const title = results[0].result.title;
+            const text = results[0].result.text;
 
-            let pageText = results[0].result.text;
-            if (pageText.length > 65536) {
-                pageText = pageText.slice(0, 65536);
-            }
-            pageText = pageText + ' ' + pageTitle;
+            titleInput.value = title;
 
-            const words = pageText.replace(/[`~!@#$%^&*()|+=?;:…"«»„“—−,<>\{\}\[\]\\\/]/gi, '').replace(/\s+/g, ' ').replace(/\n/g, ' ').split(' ');
-            // const words = pageText.split(/\s+/).filter((word) => (new XRegExp('^\\p{L}')).test(word)); // TODO: Use xregexp
-
-            const wordsHash = {};
-            words.forEach(word => {
-                // Apply some basic filtering
-                if (word.match(/^[.0-9_\-]+$/) && !word.match(/^\.[a-z]/i)) {
-                    return;
-                }
-
-                word = word.replace(/\.+$/, '');
-
-                if (wordsHash[word]) {
-                    wordsHash[word] = wordsHash[word] + 1;
-                } else {
-                    wordsHash[word] = 1;
-                }
-            });
-
-            // Filter too short words (except abbreviations)
-            const wordCountsArray = [];
-            words.forEach(word => {
-                if (wordsHash[word] && (word.length > 1) && ((word.length > 3) || (word === word.toUpperCase()))) {
-                    wordCountsArray.push({
-                        'word': word,
-                        'count': wordsHash[word]
-                    });
-
-                    delete wordsHash[word];
-                }
-            });
-
-            // Make words lowercase & combine same words
-            const wordsReducedHash = {};
-            let maxCount = 0;
-            wordCountsArray.forEach((word) => {
-                const wordLower = word.word.toLowerCase();
-                if (typeof wordsReducedHash[wordLower] === 'undefined') {
-                    word.word = wordLower;
-                    wordsReducedHash[wordLower] = word;
-                } else {
-                    wordsReducedHash[wordLower].count += word.count;
-                }
-
-                if (wordsReducedHash[wordLower].count > maxCount) {
-                    maxCount = wordsReducedHash[wordLower].count;
-                }
-            });
-
-            const totals = await db.getTotals();
-
-            totals.tags.forEach((tag) => {
-                if (wordsReducedHash[tag]) {
-                    wordsReducedHash[tag].count = maxCount + 2; // Tags which were found in the database will be displayed first
-                    wordsReducedHash[tag].isHighlighted = true;
-                }
-            });
-
-            if (wordsReducedHash[hostname]) {
-                wordsReducedHash[hostname].count = maxCount + 3; // If hostname tag is in the database it will be displayed at the very beginning of all
-            } else {
-                wordsReducedHash[hostname] = {
-                    word:           hostname,
-                    count:          maxCount + 1, // If hostname tag is not yet in the database, it will appear after tags already found
-                    isHighlighted:  false
-                };
-            }
-
-            const wordsReducedArray = Object.values(wordsReducedHash);
-
-            wordsReducedArray.sort(function(a, b) {
-                if (a.count < b.count) {
-                    return -1;
-                }
-
-                if (a.count > b.count) {
-                    return 1;
-                }
-
-                return 0;
-            });
-
-            // If there are ANY words already in user tags then display them first
-
-            const selectedWords = wordsReducedArray.slice(wordsReducedArray.length - 10).reverse();
-            selectedWords.forEach((word) => {
-                document.querySelector('#suggestedTagsPane').appendChild(new BookmarkTagElement(word));
+            const selectedTags = extractTags(hostname, title, text, totals.tags);
+            selectedTags.forEach((tag) => {
+                document.$('#suggestedTagsPane').appendChild(new BookmarkTagElement(tag));
             });
         }
     );
 }
 
-const accordions = document.querySelectorAll('.accordion-collapse');
 let opening = false;
-accordions.forEach((el) => {
-    el.addEventListener('hide.bs.collapse', (event) => {
-        if (!opening) {
-            event.preventDefault();
-            event.stopPropagation();
-        } else {
-            opening = false;
-        }
-    });
-
-    el.addEventListener('show.bs.collapse', (event) => {
-        opening = true;
-    });
+document.$('#accPanels').$on('hide.bs.collapse', '.accordion-collapse', (e) => {
+    if (!opening) {
+        e.preventDefault();
+        e.stopPropagation();
+    } else {
+        opening = false;
+    }
+});
+document.$('#accPanels').$on('show.bs.collapse', '.accordion-collapse', (e) => {
+    opening = true;
 });
 
-document.querySelector('#importBookmarksAction').addEventListener('click', function() {
+document.$('#importBookmarksAction').$on('click', function(e) {
     this.disabled = true;
 
     chrome.bookmarks.getTree((bookmarkNodes) => {
         function processNode(node, tags = []) {
             return new Promise(async function(resolve) {
                 if (node.url) {
-                    await db.addUrl(node.url, node.title, tags);
+                    await repository.addUrl(node.url, node.title, tags);
                 }
 
                 if (node.children) {
@@ -542,10 +320,13 @@ document.querySelector('#importBookmarksAction').addEventListener('click', funct
     });
 });
 
-document.addEventListener('click', (e) => {
-    const target = e.target.closest('.close-popup');
-    if (target) {
-        window.close();
-    }
+document.$on('click', '.bz-menu-open-bookmark', (e) => e.target.closest('.bz-bookmark-row').$('.bz-bookmark-link').click());
+
+document.$on('click', '.bz-close-popup', () => window.close());
+
+bookmarkForm.$on('submit', (e) => {
+    e.preventDefault();
+
+    
 });
 
