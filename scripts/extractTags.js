@@ -1,4 +1,6 @@
 function extractTags(hostname, pageTitle, pageText, knownWords = []) {
+    // hostname = hostname.replace(/^www/, '').replace(/^([^.]*)\..*/, '$1');
+
     if (pageText.length > 65536) {
         pageText = pageText.slice(0, 65536);
     }
@@ -65,10 +67,11 @@ function extractTags(hostname, pageTitle, pageText, knownWords = []) {
     } else {
         wordsReducedHash[hostname] = {
             word:           hostname,
-            count:          maxCount + 1, // If hostname tag is not yet in the database, it will appear after tags already found
-            isHighlighted:  false
+            count:          maxCount + 1 // If hostname tag is not yet in the database, it will appear after tags already found
         };
     }
+
+    wordsReducedHash[hostname].isHighlighted = true;
 
     const wordsReducedArray = Object.values(wordsReducedHash);
 

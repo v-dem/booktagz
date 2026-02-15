@@ -289,19 +289,19 @@ document.$('#importBookmarksAction').$on('click', function(e) {
     this.disabled = true;
 
     chrome.bookmarks.getTree((bookmarkNodes) => {
-        function processNode(node, tags = []) {
+        function processNode(node, folders = []) {
             return new Promise(async function(resolve) {
                 if (node.url) {
-                    await repository.addUrl(node.url, node.title, tags);
+                    await repository.addBookmark(node.url, node.title, folders);
                 }
 
                 if (node.children) {
-                    const nextTags = node.title.length
-                        ? [ ...tags, node.title.toLowerCase() ]
+                    const nextFolders = node.title.length
+                        ? [ ...folders, node.title.toLowerCase() ]
                         : [];
 
                     node.children.forEach(async function(node) {
-                        await processNode(node, nextTags);
+                        await processNode(node, nextFolders);
                     });
                 }
 
@@ -322,7 +322,7 @@ document.$('#importBookmarksAction').$on('click', function(e) {
 
 document.$on('click', '.bz-menu-open-bookmark', (e) => e.target.closest('.bz-bookmark-row').$('.bz-bookmark-link').click());
 
-document.$on('click', '.bz-close-popup', () => window.close());
+document.$on('click', '.bz-close-popup', (e) => window.close());
 
 bookmarkForm.$on('submit', (e) => {
     e.preventDefault();

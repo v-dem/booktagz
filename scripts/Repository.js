@@ -70,13 +70,13 @@ class Repository {
         loadRecords(this.idb, 'bookmarks', urls, callback, transaction);
     }
 
-    addUrl(url, title, tags) {
+    addBookmark(url, title, tags) {
         return new Promise((resolve, reject) => {
             // 1. Check all tags, if not exist create and add this url, if exist append this url
             const transaction = this.idb.transaction([ 'tags', 'bookmarks', 'totals' ], 'readwrite');
 
             transaction.oncomplete = function() {
-                resolve(1);
+                resolve();
             };
             transaction.onerror = (e) => {
                 reject(`addUrl error: ${e.target.error?.message}`);
@@ -145,8 +145,8 @@ class Repository {
             const transaction = this.idb.transaction([ 'tags' ], 'readonly');
             const store = transaction.objectStore('tags');
             store.getAll().onsuccess = (e) => {
-                const mostUsed = e.target.result;
-                mostUsed.sort(function(a, b) {
+                const allTags = e.target.result;
+                allTags.sort(function(a, b) {
                     if (a.urls.length < b.urls.length) {
                         return -1;
                     }
@@ -158,9 +158,7 @@ class Repository {
                     return 0;
                 });
 
-                mostUsed.slice(-10).reverse();
-
-                resolve(mostUsed);
+                resolve(allTags.slice(-10).reverse());
             };
         });
     }
