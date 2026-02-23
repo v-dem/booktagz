@@ -9,7 +9,7 @@
     "action": {
         "default_popup": "popup.html",
         "default_icon": "assets/icons/icon128x128.png",
-        "default_title": "Add to BooktagZ"
+        "default_title": "BooktagZ"
     },
     "content_scripts": [
         {
@@ -21,9 +21,12 @@
         "activeTab",
         "tabs",
         "webNavigation",
-        "scripting", // to get webpage title and content
-        "bookmarks", // to catch add to bookmarks event
-        "storage" // to use chrome.storage.local
+        "scripting", // To get webpage title and content
+        "bookmarks", // To catch add to bookmarks event
+        "storage" // To use chrome.storage.local
+    ],
+    "host_permissions": [
+        "*://*://" // Required to fetch suggested tags for webpage in Edit Bookmark section
     ],
     "background": {
         "service_worker": "background.js"

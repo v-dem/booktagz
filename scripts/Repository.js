@@ -20,7 +20,7 @@ class Repository {
             // Database schema:
             // - bookmarks (url (unique), title, tags[])
             // - tags (name (unique), urls[])
-            // - totals (1, tags[])
+            // - totals (1, recentTags[])
 
             const db = e.target.result;
 
@@ -30,8 +30,7 @@ class Repository {
 
             const totalsStore = db.createObjectStore('totals', { autoIncrement: true });
             totalsStore.add({
-                tags: [],
-                recent: []
+                recentTags: []
             });
         };
     }
@@ -63,11 +62,11 @@ class Repository {
     }
 
     loadTagsSet(tags, callback, transaction = null) {
-        loadRecords(this.idb, 'tags', tags, callback, transaction);
+        this.loadRecords('tags', tags, callback, transaction);
     }
 
     loadBookmarksSet(urls, callback, transaction = null) {
-        loadRecords(this.idb, 'bookmarks', urls, callback, transaction);
+        this.loadRecords('bookmarks', urls, callback, transaction);
     }
 
     addBookmark(url, title, tags) {
@@ -79,17 +78,20 @@ class Repository {
                 resolve();
             };
             transaction.onerror = (e) => {
-                reject(`addUrl error: ${e.target.error?.message}`);
+                reject(`addBookmark() error: ${e.target.error?.message}`);
             };
 
             this.loadTagsSet(tags, (existingTags) => {
                 const tagsStore = transaction.objectStore('tags');
+                const newTags = [];
                 tags.forEach(tag => {
                     if (typeof existingTags[tag] === 'undefined') {
                         tagsStore.add({
                             name: tag,
                             urls: [ url ]
                         });
+
+                        newTags.push(tag);
                     } else {
                         existingTags[tag].urls.push(url);
 
@@ -113,11 +115,9 @@ class Repository {
                 const totalsStore = transaction.objectStore('totals');
                 totalsStore.get(1).onsuccess = (e) => {
                     const tagsObject = e.target.result;
-                    const newTags = new Set([ ...tagsObject.tags, ...tags ]);
-                    tagsObject.tags = [ ...newTags ];
-                    tagsObject.recent = [ ...tagsObject.recent, ...newTags ];
-                    if (tagsObject.recent.length > 10) {
-                        tagsObject.recent = tagsObject.recent.slice(-10);
+                    tagsObject.recentTags = [ ...tagsObject.recentTags, ...newTags ];
+                    if (tagsObject.recentTags.length > 10) {
+                        tagsObject.recentTags = tagsObject.recentTags.slice(-10);
                     }
 
                     totalsStore.put(tagsObject, 1);
@@ -126,7 +126,7 @@ class Repository {
         });
     }
 
-    getTotals() {
+    loadTotals() {
         return new Promise((resolve, reject) => {
             const transaction = this.idb.transaction([ 'totals' ], 'readonly');
             const store = transaction.objectStore('totals');
@@ -135,7 +135,21 @@ class Repository {
             };
 
             transaction.onerror = (e) => {
-                reject(`getTotals error: ${e.target.error?.message}`);
+                reject(`loadTotals() error: ${e.target.error?.message}`);
+            };
+        });
+    }
+
+    loadTags() {
+        return new Promise((resolve, reject) => {
+            const transaction = this.idb.transaction([ 'tags' ], 'readonly');
+            const store = transaction.objectStore('tags');
+            store.getAllKeys().onsuccess = (e) => {
+                resolve(e.target.result);
+            };
+
+            transaction.onerror = (e) => {
+                reject(`loadTags() error: ${e.target.error?.message}`);
             };
         });
     }
@@ -177,6 +191,16 @@ class Repository {
                 callback(e.target.result);
             };
         }
+    }
+
+    loadBookmark(url) {
+        return new Promise((resolve, reject) => {
+            const transaction = this.idb.transaction([ 'bookmarks' ], 'readonly');
+            const store = transaction.objectStore('bookmarks');
+            store.get(url).onsuccess = (e) => {
+                resolve(e.target.result);
+            };
+        });
     }
 }
 

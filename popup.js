@@ -47,6 +47,17 @@ Document.prototype.$$ = DocumentFragment.prototype.$$ = Element.prototype.$$ = f
     return elements;
 }
 
+const urlInputEl = document.$('#inputUrl');
+const titleInputEl = document.$('#inputTitle');
+const tagsInputEl = document.$('#inputTags');
+
+const tagsSearchEl = document.$('#searchTags');
+
+const bookmarkFormEl = document.$('#bookmarkForm');
+
+const bookmarkSection = new bootstrap.Collapse('[data-bs-target="#flush-collapseBookmark"]');
+const searchSection = new bootstrap.Collapse('[data-bs-target="#flush-collapseSearch"]');
+
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     if (request.type === 'popupData') {
         console.log('Data received:', request.data);
@@ -69,12 +80,9 @@ class Tag {
 }
 
 const repository = new Repository(function() {
-    repository.getTotals().then((totals) => {
-        Tags.init('#' + tagsInput.id, {
-            'items': totals.tags.reduce((obj, item) => {
-                obj[item] = item;
-                return obj;
-            }, {}),
+    repository.loadTags().then((tags) => {
+        Tags.init('#' + tagsInputEl.id, {
+            'items': tags,
 
             'inputFilter': (input) => {
                 return input.trim().toLowerCase();
@@ -100,11 +108,8 @@ const repository = new Repository(function() {
             }
         });
 
-        Tags.init('#' + tagsSearch.id, {
-            'items': totals.tags.reduce((obj, item) => {
-                obj[item] = item;
-                return obj;
-            }, {}),
+        Tags.init('#' + tagsSearchEl.id, {
+            'items': tags,
 
             'onSelectItem': (item) => {
                 // tagsManager.check(item.value, false);
@@ -114,8 +119,10 @@ const repository = new Repository(function() {
                 // tagsManager.uncheck(item);
             }
         });
+    });
 
-        totals.recent.forEach((tag) => {
+    repository.loadTotals().then((totals) => {
+        totals.recentTags.forEach((tag) => {
             const word = {
                 word:           tag,
                 isHighlighted:  true
@@ -161,7 +168,7 @@ const tagsManager = {
         });
 
         if (shouldAddItem) {
-            const inputTags = Tags.getInstance(tagsInput);
+            const inputTags = Tags.getInstance(tagsInputEl);
             inputTags.addItem(tag, tag);
             inputTags.s.placeholder = '';
         }
@@ -177,10 +184,10 @@ const tagsManager = {
             }
         });
 
-        const inputTags = Tags.getInstance(tagsInput);
+        const inputTags = Tags.getInstance(tagsInputEl);
         inputTags.removeItem(tag);
         if (inputTags.getSelectedValues().length === 0) {
-            inputTags.s.placeholder = tagsInput.$('option:first-child').label;
+            inputTags.s.placeholder = tagsInputEl.$('option:first-child').label;
         }
     }
 }
@@ -215,28 +222,20 @@ class BookmarkTagElement extends HTMLElement {
 
 customElements.define('bz-bookmark-tag', BookmarkTagElement);
 
-const urlInput = document.$('#inputUrl');
-const titleInput = document.$('#inputTitle');
-const tagsInput = document.$('#inputTags');
-const tagsSearch = document.$('#searchTags');
-
-const bookmarkForm = document.$('#bookmarkForm');
-
 async function loadAndParsePage() { // Load page data manually
     const [ tab ] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+
+    // Hide "Add Bookmark" section and open "Search Bookmark" if current tab is blank or it's Chromium service page
     if (!tab || tab.url.match(/^chrome:/)) {
-        document.$('[data-bs-target="#flush-collapseNewBookmark"]').closest('.accordion-item').style.display = 'none';
-
-        const searchBookmarksSection = new bootstrap.Collapse(document.$('#flush-collapseSearchBookmarks'));
-        searchBookmarksSection.show();
-
-        tagsSearch.focus();
+        bookmarkSection.closest('.accordion-item').style.display = 'none';
+        searchSection.show();
+        tagsSearchEl.focus();
 
         return;
     }
 
-    urlInput.value = tab.url;
-    tagsInput.focus();
+    urlInputEl.value = tab.url;
+    tagsInputEl.focus();
 
     const hostname = (new URL(tab.url)).hostname.toLowerCase().replace(/^www\./, '');
 
@@ -258,13 +257,14 @@ async function loadAndParsePage() { // Load page data manually
                 return;
             }
 
-            const totals = await repository.getTotals();
+            const tags = await repository.loadTags();
             const title = results[0].result.title;
             const text = results[0].result.text;
 
-            titleInput.value = title;
+            titleInputEl.value = title;
 
-            const selectedTags = extractTags(hostname, title, text, totals.tags);
+            const selectedTags = extractTags(hostname, title, text, tags);
+            document.$('#suggestedTagsPane').replaceChildren();
             selectedTags.forEach((tag) => {
                 document.$('#suggestedTagsPane').appendChild(new BookmarkTagElement(tag));
             });
@@ -322,11 +322,48 @@ document.$('#importBookmarksAction').$on('click', function(e) {
 
 document.$on('click', '.bz-menu-open-bookmark', (e) => e.target.closest('.bz-bookmark-row').$('.bz-bookmark-link').click());
 
+document.$on('click', '.bz-menu-edit-bookmark', (e) => {
+    const url = e.target.closest('.bz-bookmark-row').$('.bz-bookmark-link').href;
+
+    repository.loadBookmark(url).then((bookmark) => {
+        urlInputEl.value = bookmark.url;
+        titleInputEl.value = bookmark.title;
+        bookmark.tags.forEach((tag) => {
+            tagsManager.check(tag);
+        });
+
+        window
+            .fetch(bookmark.url)
+            .then(response => response.text())
+            .then(html => {
+                const hostname = (new URL(bookmark.url)).hostname.toLowerCase().replace(/^www\./, '');
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const text = doc.body.textContent;
+                repository.loadTags().then((tags) => {
+                    const selectedTags = extractTags(hostname, bookmark.title, text, tags);
+                    document.$('#suggestedTagsPane').replaceChildren();
+                    selectedTags.forEach((tag) => {
+                        document.$('#suggestedTagsPane').appendChild(new BookmarkTagElement(tag));
+                    });
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching page:', error);
+            });
+    });
+
+    bookmarkFormEl.dataset['mode'] = 'edit';
+    bookmarkSection.show();
+
+    tagsInputEl.focus();
+});
+
 document.$on('click', '.bz-close-popup', (e) => window.close());
 
-bookmarkForm.$on('submit', (e) => {
+bookmarkFormEl.$on('submit', (e) => {
     e.preventDefault();
 
-    
+    // TODO:
 });
 

@@ -101,12 +101,12 @@
             <div class="accordion-item">
                 <form id="bookmarkForm" data-mode="new">
                     <h2 class="accordion-header">
-                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseNewBookmark" aria-expanded="true" aria-controls="flush-collapseNewBookmark">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseBookmark" aria-expanded="true" aria-controls="flush-collapseBookmark">
                             <i class="bi bi-bookmark-star-fill text-warning"></i>&nbsp;<span class="bz-mode-new">Add</span><span class="bz-mode-edit">Edit</span>&nbsp;Bookmark
                         </button>
                     </h2>
 
-                    <div id="flush-collapseNewBookmark" class="accordion-collapse collapse show" data-bs-parent="#accPanels">
+                    <div id="flush-collapseBookmark" class="accordion-collapse collapse show" data-bs-parent="#accPanels">
                         <div class="accordion-body">
                             <div class="row p-1">
                                 <div class="col-auto">
@@ -224,12 +224,12 @@
 
             <div class="accordion-item">
                 <h2 class="accordion-header">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseSearchBookmarks" aria-expanded="false" aria-controls="flush-collapseSearchBookmarks">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseSearch" aria-expanded="false" aria-controls="flush-collapseSearch">
                         <i class="bi bi-binoculars-fill text-success"></i>&nbsp;Search
                     </button>
                 </h2>
 
-                <div id="flush-collapseSearchBookmarks" class="accordion-collapse collapse" data-bs-parent="#accPanels">
+                <div id="flush-collapseSearch" class="accordion-collapse collapse" data-bs-parent="#accPanels">
                     <div class="accordion-body">
                         <div class="row p-1">
                             <div class="col-auto">
@@ -284,8 +284,8 @@
                         </table>
 
                         <template id="bookmarkRowTemplate">
-                            <tr class="bz-bookmark-row" data-attribute="title" data-attribute-property="url">
-                                <td class="bz-bookmark-cell">
+                            <tr class="bz-bookmark-row">
+                                <td class="bz-bookmark-cell" data-attribute="title" data-attribute-property="url">
                                     <a class="link-body-emphasis text-small bz-bookmark-link" target="_blank" data-attribute="href" data-attribute-property="url">
                                         <small data-content-property="title" class="bz-bookmark-name"></small>
                                     </a>

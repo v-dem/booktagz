@@ -78,7 +78,10 @@ class PaginationBlockElement extends HTMLElement {
 
         this.querySelector('.page-item.active')?.classList.remove('active');
 
-        this.querySelector(`.page-item:has(.page-link[data-page="${this.currentPage}"])`).classList.add('active');
+        const currentPageEl = this.querySelector(`.page-item:has(.page-link[data-page="${this.currentPage}"])`);
+        if (currentPageEl) {
+            currentPageEl.classList.add('active');
+        }
 
         this.renderPageRows();
     }
