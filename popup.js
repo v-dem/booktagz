@@ -55,8 +55,12 @@ const tagsSearchEl = document.$('#searchTags');
 
 const bookmarkFormEl = document.$('#bookmarkForm');
 
-const bookmarkSection = new bootstrap.Collapse('[data-bs-target="#flush-collapseBookmark"]');
-const searchSection = new bootstrap.Collapse('[data-bs-target="#flush-collapseSearch"]');
+const bookmarkSection = new bootstrap.Collapse(document.$('#flush-collapseBookmark'), {
+    toggle: false
+});
+const searchSection = new bootstrap.Collapse(document.$('#flush-collapseSearch'), {
+    toggle: false
+});
 
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     if (request.type === 'popupData') {
@@ -227,7 +231,8 @@ async function loadAndParsePage() { // Load page data manually
 
     // Hide "Add Bookmark" section and open "Search Bookmark" if current tab is blank or it's Chromium service page
     if (!tab || tab.url.match(/^chrome:/)) {
-        bookmarkSection.closest('.accordion-item').style.display = 'none';
+        document.$('[data-bs-target="#flush-collapseBookmark"]').closest('.accordion-item').style.display = 'none';
+
         searchSection.show();
         tagsSearchEl.focus();
 
@@ -320,7 +325,9 @@ document.$('#importBookmarksAction').$on('click', function(e) {
     });
 });
 
-document.$on('click', '.bz-menu-open-bookmark', (e) => e.target.closest('.bz-bookmark-row').$('.bz-bookmark-link').click());
+document.$on('click', '.bz-menu-open-bookmark', (e) => {
+    e.target.closest('.bz-bookmark-row').$('.bz-bookmark-link').click();
+});
 
 document.$on('click', '.bz-menu-edit-bookmark', (e) => {
     const url = e.target.closest('.bz-bookmark-row').$('.bz-bookmark-link').href;
@@ -348,7 +355,7 @@ document.$on('click', '.bz-menu-edit-bookmark', (e) => {
                     });
                 });
             })
-            .catch(error => {
+            .catch((error) => {
                 console.error('Error fetching page:', error);
             });
     });
@@ -359,7 +366,9 @@ document.$on('click', '.bz-menu-edit-bookmark', (e) => {
     tagsInputEl.focus();
 });
 
-document.$on('click', '.bz-close-popup', (e) => window.close());
+document.$on('click', '.bz-close-popup', (e) => {
+    window.close();
+});
 
 bookmarkFormEl.$on('submit', (e) => {
     e.preventDefault();
