@@ -69,21 +69,21 @@ class Repository {
         this.loadRecords('bookmarks', urls, callback, transaction);
     }
 
-    addBookmark(url, title, tags) {
+    storeBookmark(url, title, tags) {
         return new Promise((resolve, reject) => {
-            // 1. Check all tags, if not exist create and add this url, if exist append this url
             const transaction = this.idb.transaction([ 'tags', 'bookmarks', 'totals' ], 'readwrite');
-
             transaction.oncomplete = function() {
                 resolve();
             };
             transaction.onerror = (e) => {
-                reject(`addBookmark() error: ${e.target.error?.message}`);
+                reject(`storeBookmark() error: ${e.target.error?.message}`);
             };
 
+            // 1. Check all tags, if not exist create and add this url, if exist append this url
             this.loadTagsSet(tags, (existingTags) => {
                 const tagsStore = transaction.objectStore('tags');
                 const newTags = [];
+                const removedTags = structuredClone(existingTags);
                 tags.forEach(tag => {
                     if (typeof existingTags[tag] === 'undefined') {
                         tagsStore.add({
@@ -93,16 +93,37 @@ class Repository {
 
                         newTags.push(tag);
                     } else {
+                        delete removedTags[tag];
+
                         existingTags[tag].urls.push(url);
 
                         tagsStore.put(existingTags[tag]);
                     }
                 });
 
-                // 2. Create a bookmark
+                // 2. Remove URLs in removedTags
+                for (const [tag, tagRecord] of Object.entries(removedTags)) {
+                    const urlIndex = tagRecord.urls.indexOf(url);
+                    if (urlIndex > -1) {
+                        tagRecord.urls.splice(urlIndex, 1);
+                        if (tagRecord.urls.length) {
+                            tagsStore.put(tagRecord);
+                        } else {
+                            tagsStore.delete(tag);
+                        }
+                    }
+                }
+
+                // 3. Store a bookmark
                 const bookmarksStore = transaction.objectStore('bookmarks');
                 bookmarksStore.get(url).onsuccess = (e) => {
-                    if (!e.target.result) {
+                    if (e.target.result) {
+                        bookmarksStore.put({
+                            url: url,
+                            title: title,
+                            tags: tags
+                        });
+                    } else {
                         bookmarksStore.add({
                             url: url,
                             title: title,
@@ -111,7 +132,7 @@ class Repository {
                     }
                 };
 
-                // 3. Update totals
+                // 4. Update totals
                 const totalsStore = transaction.objectStore('totals');
                 totalsStore.get(1).onsuccess = (e) => {
                     const tagsObject = e.target.result;

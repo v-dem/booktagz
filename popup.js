@@ -297,7 +297,7 @@ document.$('#importBookmarksAction').$on('click', function(e) {
         function processNode(node, folders = []) {
             return new Promise(async function(resolve) {
                 if (node.url) {
-                    await repository.addBookmark(node.url, node.title, folders);
+                    await repository.storeBookmark(node.url, node.title, folders);
                 }
 
                 if (node.children) {
@@ -373,6 +373,7 @@ document.$on('click', '.bz-close-popup', (e) => {
 bookmarkFormEl.$on('submit', (e) => {
     e.preventDefault();
 
-    // TODO:
+    const inputTags = Tags.getInstance(tagsInputEl);
+    repository.storeBookmark(urlInputEl.value, titleInputEl.value, inputTags.getSelectedValues());
 });
 
