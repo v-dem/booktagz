@@ -34,7 +34,7 @@ Document.prototype.$ = DocumentFragment.prototype.$ = Element.prototype.$ = func
         callback(element);
     }
 
-    return this.querySelector(selector);
+    return element;
 }
 
 Document.prototype.$$ = DocumentFragment.prototype.$$ = Element.prototype.$$ = function(selector, callback = null) {
@@ -83,10 +83,8 @@ class Tag {
     }
 }
 
-const repository = new Repository(function() {
-    repository.loadTags().then((tags) => {
         Tags.init('#' + tagsInputEl.id, {
-            'items': tags,
+//            'items': tags,
 
             'inputFilter': (input) => {
                 return input.trim().toLowerCase();
@@ -99,30 +97,39 @@ const repository = new Repository(function() {
                     item.value = item.textContent = item.dataset.value;
                     console.log(item, t);
 */
-                    tagsManager.check(item.dataset.value, false);
+                    tagsInputManager.check(item.dataset.value, false);
                 }
             },
 
             'onSelectItem': (item) => {
-                tagsManager.check(item.value, false);
+                tagsInputManager.check(item.value, false);
             },
 
             'onClearItem': (item) => {
-                tagsManager.uncheck(item);
+                tagsInputManager.uncheck(item);
             }
         });
 
         Tags.init('#' + tagsSearchEl.id, {
-            'items': tags,
+//            'items': tags,
 
             'onSelectItem': (item) => {
-                // tagsManager.check(item.value, false);
+                // tagsInputManager.check(item.value, false);
             },
 
             'onClearItem': (item) => {
-                // tagsManager.uncheck(item);
+                // tagsInputManager.uncheck(item);
             }
         });
+
+const repository = new Repository(function() {
+    repository.loadTags().then((tags) => {
+        tagsInputManager.setData(tags.map((tag) => {
+            return {
+                label: tag,
+                value: tag
+            };
+        }));
     });
 
     repository.loadTotals().then((totals) => {
@@ -154,14 +161,31 @@ const repository = new Repository(function() {
     });
 });
 
-const tagsManager = {
-    elements: [],
+class TagsManager {
+    constructor(el) {
+        if (typeof el === 'string') {
+            this.el = document.$(el);
+        } else if (el instanceof HTMLElement) {
+            this.el = el;
+        } else {
+            throw new Error('Wrong element type passed');
+        }
 
-    add: function(element) {
+        this.tagsObject = Tags.getInstance(this.el);
+        this.elements = [];
+    }
+
+    setData(data) {
+        console.log('data:', data);
+        console.log('tagsObject:', this.tagsObject);
+        this.tagsObject.updateData(data);
+    }
+
+    add(element) {
         this.elements.push(element);
-    },
+    }
 
-    check: function(tag, shouldAddItem = true) {
+    check(tag, shouldAddItem = true) {
         this.elements.forEach((element) => {
             if (element.dataset['tag'] === tag) {
                 element.$('button', (el) => {
@@ -172,13 +196,12 @@ const tagsManager = {
         });
 
         if (shouldAddItem) {
-            const inputTags = Tags.getInstance(tagsInputEl);
-            inputTags.addItem(tag, tag);
-            inputTags.s.placeholder = '';
+            this.tagsObject.addItem(tag, tag);
+            this.tagsObject.s.placeholder = '';
         }
-    },
+    }
 
-    uncheck: function(tag) {
+    uncheck(tag) {
         this.elements.forEach((element) => {
             if (element.dataset['tag'] === tag) {
                 element.$('button', (el) => {
@@ -188,13 +211,14 @@ const tagsManager = {
             }
         });
 
-        const inputTags = Tags.getInstance(tagsInputEl);
-        inputTags.removeItem(tag);
-        if (inputTags.getSelectedValues().length === 0) {
-            inputTags.s.placeholder = tagsInputEl.$('option:first-child').label;
+        this.tagsObject.removeItem(tag);
+        if (this.tagsObject.getSelectedValues().length === 0) {
+            this.tagsObject.s.placeholder = this.el.$('option:first-child').label;
         }
     }
 }
+
+const tagsInputManager = new TagsManager(tagsInputEl);
 
 class BookmarkTagElement extends HTMLElement {
     constructor(tag) {
@@ -210,15 +234,15 @@ class BookmarkTagElement extends HTMLElement {
                 : 'btn-outline-secondary'
         );
 
-        tagsManager.add(this);
+        tagsInputManager.add(this);
     }
 
     connectedCallback() {
         this.$on('click', (e) => {
             if (this.$('button').classList.contains('active')) {
-                tagsManager.check(this.dataset['tag']);
+                tagsInputManager.check(this.dataset['tag']);
             } else {
-                tagsManager.uncheck(this.dataset['tag']);
+                tagsInputManager.uncheck(this.dataset['tag']);
             }
         });
     }
@@ -332,11 +356,15 @@ document.$on('click', '.bz-menu-open-bookmark', (e) => {
 document.$on('click', '.bz-menu-edit-bookmark', (e) => {
     const url = e.target.closest('.bz-bookmark-row').$('.bz-bookmark-link').href;
 
+    const inputTags = Tags.getInstance(tagsInputEl);
+    console.log(inputTags);
+    inputTags.removeAll();
+
     repository.loadBookmark(url).then((bookmark) => {
         urlInputEl.value = bookmark.url;
         titleInputEl.value = bookmark.title;
         bookmark.tags.forEach((tag) => {
-            tagsManager.check(tag);
+            tagsInputManager.check(tag);
         });
 
         window
@@ -370,9 +398,13 @@ document.$on('click', '.bz-close-popup', (e) => {
     window.close();
 });
 
-bookmarkFormEl.$on('submit', (e) => {
+document.$('#removeBookmark').$on('click', (e) => {
     e.preventDefault();
 
+    console.log('remove bookmark');
+});
+
+bookmarkFormEl.$on('submit', (e) => {
     const inputTags = Tags.getInstance(tagsInputEl);
     repository.storeBookmark(urlInputEl.value, titleInputEl.value, inputTags.getSelectedValues());
 });
