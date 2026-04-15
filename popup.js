@@ -293,10 +293,10 @@ async function loadAndParsePage() { // Load page data manually
             titleInputEl.value = title;
 
             const selectedTags = extractTags(hostname, title, text, tags);
-            document.$('#suggestedTagsPane').replaceChildren();
-            selectedTags.forEach((tag) => {
-                document.$('#suggestedTagsPane').appendChild(new BookmarkTagElement(tag));
-            });
+
+            document.$('#suggestedTagsPane').replaceChildren(...selectedTags.map((tag) => new BookmarkTagElement(tag)));
+
+            selectedTags.forEach((tag) => tagsInputManager.check(tag, false));
         }
     );
 }
@@ -353,12 +353,14 @@ document.$on('click', '.bz-menu-open-bookmark', (e) => {
     e.target.closest('.bz-bookmark-row').$('.bz-bookmark-link').click();
 });
 
+document.$on('click', '.bz-bookmark-link', (e) => {
+    // e.preventDefault();
+});
+
 document.$on('click', '.bz-menu-edit-bookmark', (e) => {
     const url = e.target.closest('.bz-bookmark-row').$('.bz-bookmark-link').href;
 
-    const inputTags = Tags.getInstance(tagsInputEl);
-    console.log(inputTags);
-    inputTags.removeAll();
+    Tags.getInstance(tagsInputEl).removeAll();
 
     repository.loadBookmark(url).then((bookmark) => {
         urlInputEl.value = bookmark.url;
@@ -368,7 +370,11 @@ document.$on('click', '.bz-menu-edit-bookmark', (e) => {
         });
 
         window
-            .fetch(bookmark.url)
+            .fetch(bookmark.url, {
+                headers: {
+                    'Accept': 'text/plain'
+                }
+            })
             .then(response => response.text())
             .then(html => {
                 const hostname = (new URL(bookmark.url)).hostname.toLowerCase().replace(/^www\./, '');
@@ -377,10 +383,11 @@ document.$on('click', '.bz-menu-edit-bookmark', (e) => {
                 const text = doc.body.textContent;
                 repository.loadTags().then((tags) => {
                     const selectedTags = extractTags(hostname, bookmark.title, text, tags);
-                    document.$('#suggestedTagsPane').replaceChildren();
-                    selectedTags.forEach((tag) => {
-                        document.$('#suggestedTagsPane').appendChild(new BookmarkTagElement(tag));
-                    });
+                    console.log('>>>', selectedTags);
+
+                    document.$('#suggestedTagsPane').replaceChildren(...selectedTags.map((tag) => new BookmarkTagElement(tag)));
+
+                    selectedTags.forEach((tag) => tagsInputManager.check(tag, false));
                 });
             })
             .catch((error) => {
@@ -398,6 +405,14 @@ document.$on('click', '.bz-close-popup', (e) => {
     window.close();
 });
 
+document.$on('click', '#cancelBookmarkEdit', (e) => {
+    if (bookmarkFormEl.dataset['mode'] == 'edit') {
+        backToSearch();
+    } else {
+        window.close();
+    }
+});
+
 document.$('#removeBookmark').$on('click', (e) => {
     e.preventDefault();
 
@@ -405,7 +420,21 @@ document.$('#removeBookmark').$on('click', (e) => {
 });
 
 bookmarkFormEl.$on('submit', (e) => {
+    e.preventDefault();
+
     const inputTags = Tags.getInstance(tagsInputEl);
     repository.storeBookmark(urlInputEl.value, titleInputEl.value, inputTags.getSelectedValues());
+
+    backToSearch();
 });
+
+function backToSearch() {
+    Tags.getInstance(tagsInputEl).removeAll();
+
+    loadAndParsePage();
+
+    bookmarkFormEl.dataset['mode'] = 'new';
+
+    searchSection.show();
+}
 
