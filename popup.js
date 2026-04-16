@@ -370,17 +370,15 @@ document.$on('click', '.bz-menu-edit-bookmark', (e) => {
         });
 
         window
-            .fetch(bookmark.url, {
-                headers: {
-                    'Accept': 'text/plain'
-                }
-            })
+            .fetch(bookmark.url)
             .then(response => response.text())
             .then(html => {
                 const hostname = (new URL(bookmark.url)).hostname.toLowerCase().replace(/^www\./, '');
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(html, 'text/html');
-                const text = doc.body.textContent;
+                const elementsToRemove = doc.querySelectorAll('script, style');
+                elementsToRemove.forEach(el => el.remove());
+                const text = doc.body.textContent || '';
                 repository.loadTags().then((tags) => {
                     const selectedTags = extractTags(hostname, bookmark.title, text, tags);
                     console.log('>>>', selectedTags);
