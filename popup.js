@@ -1,4 +1,3 @@
-// import XRegExp from './node_modules/xregexp/xregexp-all.js';
 import Tags from './node_modules/bootstrap5-tags/tags.min.js';
 import Repository from './scripts/Repository.js';
 import extractTags from './scripts/extractTags.js';

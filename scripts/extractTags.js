@@ -1,22 +1,23 @@
 function extractTags(hostname, pageTitle, pageText, knownWords = []) {
-    // hostname = hostname.replace(/^www/, '').replace(/^([^.]*)\..*/, '$1');
-
+/*
     if (pageText.length > 65536) {
         pageText = pageText.slice(0, 65536);
     }
+*/
     pageText = pageText + ' ' + pageTitle;
 
-    const words = pageText.replace(/[`~!@#$%^&*()|+=?;:…"«»„“—−,<>\{\}\[\]\\\/]/gi, '').replace(/\s+/g, ' ').replace(/\n/g, ' ').split(' ');
-    // const words = pageText.split(/\s+/).filter((word) => (new XRegExp('^\\p{L}')).test(word)); // TODO: Use xregexp
+    const words = Array.from((new Intl.Segmenter('default', { granularity: 'word' })).segment(pageText)).filter((s) => s.isWordLike).map((s) => s.segment);
 
     const wordsHash = {};
     words.forEach(word => {
+        /*
         // Apply some basic filtering
         if (word.match(/^[.0-9_\-]+$/) && !word.match(/^\.[a-z]/i)) {
             return;
         }
 
         word = word.replace(/\.+$/, '');
+        */
 
         if (wordsHash[word]) {
             wordsHash[word] = wordsHash[word] + 1;
