@@ -47,7 +47,7 @@ function updateIcon(tabId, url) {
             const store = transaction.objectStore('bookmarks');
             store.get(url).onsuccess = (e) => {
                 if (e.target.result) {
-                    // Change to 'active' icon for example.com
+                    // Change icon to 'active'
                     chrome.action.setIcon({
                         path: ICONS_ACTIVE,
                         tabId: tabId
@@ -62,7 +62,7 @@ function updateIcon(tabId, url) {
             }
         }
     } else {
-        // Revert to 'default' icon for other URLs
+        // Revert to 'default' icon
         chrome.action.setIcon({
             path: ICONS_DEFAULT,
             tabId: tabId
@@ -82,5 +82,11 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
     chrome.tabs.get(activeInfo.tabId, (tab) => {
         updateIcon(activeInfo.tabId, tab.url);
     });
+});
+
+chrome.webNavigation.onCommitted.addListener((details) => {
+    if (details.transitionType === 'reload') {
+        updateIcon(details.tabId, details.url);
+    }
 });
 

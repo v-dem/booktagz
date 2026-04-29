@@ -69,7 +69,14 @@ class Repository {
         this.loadRecords('bookmarks', urls, callback, transaction);
     }
 
+    loadBookmark(url) {
+        return new Promise((resolve, reject) => {
+            this.loadBookmarksSet([ url ], (results) => resolve(results.length > 0 ? results[0] : null));
+        });
+    }
+
     storeBookmark(url, title, tags) {
+        console.log(url, title, tags);
         return new Promise((resolve, reject) => {
             const transaction = this.idb.transaction([ 'tags', 'bookmarks', 'totals' ], 'readwrite');
             transaction.oncomplete = function() {
@@ -103,7 +110,10 @@ class Repository {
 
                 // 2. Remove URLs in removedTags
                 for (const [tag, tagRecord] of Object.entries(removedTags)) {
-                    const urlIndex = tagRecord.urls.indexOf(url);
+                    console.log('---', tag, tagRecord);
+                    const urlIndex = tagRecord
+                        ? tagRecord.urls.indexOf(url)
+                        : -1;
                     if (urlIndex > -1) {
                         tagRecord.urls.splice(urlIndex, 1);
                         if (tagRecord.urls.length) {
@@ -118,12 +128,14 @@ class Repository {
                 const bookmarksStore = transaction.objectStore('bookmarks');
                 bookmarksStore.get(url).onsuccess = (e) => {
                     if (e.target.result) {
+                        console.log('put', e.target.result);
                         bookmarksStore.put({
                             url: url,
                             title: title,
                             tags: tags
                         });
                     } else {
+                        console.log('add');
                         bookmarksStore.add({
                             url: url,
                             title: title,

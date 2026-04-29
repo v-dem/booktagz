@@ -26,7 +26,7 @@
         "storage" // To use chrome.storage.local
     ],
     "host_permissions": [
-        "*://*://" // Required to fetch suggested tags for webpage in Edit Bookmark section
+        "*://*/*" // Required to fetch suggested tags for webpage in Edit Bookmark section
     ],
     "background": {
         "service_worker": "background.js"

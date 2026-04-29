@@ -296,6 +296,12 @@ async function loadAndParsePage() { // Load page data manually
             document.$('#suggestedTagsPane').replaceChildren(...selectedTags.map((tag) => new BookmarkTagElement(tag)));
 
             selectedTags.forEach((tag) => tagsInputManager.check(tag, false));
+
+            repository.loadBookmark(tab.url).then((bookmark) => {
+                if (bookmark) {
+                    bookmarkFormEl.dataset['mode'] = 'edit';
+                }
+            });
         }
     );
 }
@@ -403,17 +409,11 @@ document.$on('click', '.bz-close-popup', (e) => {
 });
 
 document.$on('click', '#cancelBookmarkEdit', (e) => {
-    if (bookmarkFormEl.dataset['mode'] == 'edit') {
-        backToSearch();
-    } else {
-        window.close();
-    }
+    bookmarkEditFinished();
 });
 
 document.$('#removeBookmark').$on('click', (e) => {
     e.preventDefault();
-
-    console.log('remove bookmark');
 });
 
 bookmarkFormEl.$on('submit', (e) => {
@@ -422,8 +422,16 @@ bookmarkFormEl.$on('submit', (e) => {
     const inputTags = Tags.getInstance(tagsInputEl);
     repository.storeBookmark(urlInputEl.value, titleInputEl.value, inputTags.getSelectedValues());
 
-    backToSearch();
+    bookmarkEditFinished();
 });
+
+function bookmarkEditFinished() {
+    if (bookmarkFormEl.dataset['mode'] == 'edit') {
+        backToSearch();
+    } else {
+        window.close();
+    }
+}
 
 function backToSearch() {
     Tags.getInstance(tagsInputEl).removeAll();

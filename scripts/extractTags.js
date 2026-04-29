@@ -4,20 +4,16 @@ function extractTags(hostname, pageTitle, pageText, knownWords = []) {
         pageText = pageText.slice(0, 65536);
     }
 */
-    pageText = pageText + ' ' + pageTitle;
+    pageText = pageText + ' ' + pageTitle; // Add some words from title to increase counters
 
     const words = Array.from((new Intl.Segmenter('default', { granularity: 'word' })).segment(pageText)).filter((s) => s.isWordLike).map((s) => s.segment);
 
     const wordsHash = {};
     words.forEach(word => {
-        /*
         // Apply some basic filtering
         if (word.match(/^[.0-9_\-]+$/) && !word.match(/^\.[a-z]/i)) {
             return;
         }
-
-        word = word.replace(/\.+$/, '');
-        */
 
         if (wordsHash[word]) {
             wordsHash[word] = wordsHash[word] + 1;
