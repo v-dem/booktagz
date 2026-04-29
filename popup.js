@@ -60,6 +60,9 @@ const bookmarkSection = new bootstrap.Collapse(document.$('#flush-collapseBookma
 const searchSection = new bootstrap.Collapse(document.$('#flush-collapseSearch'), {
     toggle: false
 });
+const settingsSection = new bootstrap.Collapse(document.$('#flush-collapseSettings'), {
+    toggle: false
+});
 
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     if (request.type === 'popupData') {
@@ -249,6 +252,8 @@ class BookmarkTagElement extends HTMLElement {
 
 customElements.define('bz-bookmark-tag', BookmarkTagElement);
 
+let isLoadedToEdit = false;
+
 async function loadAndParsePage() { // Load page data manually
     const [ tab ] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
 
@@ -299,6 +304,13 @@ async function loadAndParsePage() { // Load page data manually
 
             repository.loadBookmark(tab.url).then((bookmark) => {
                 if (bookmark) {
+                    if (!isLoadedToEdit) {
+                        isLoadedToEdit = true;
+                    }
+
+                    document.$('[data-bs-target="#flush-collapseSearch"]').closest('.accordion-item').style.display = 'none';
+                    document.$('[data-bs-target="#flush-collapseSettings"]').closest('.accordion-item').style.display = 'none';
+
                     bookmarkFormEl.dataset['mode'] = 'edit';
                 }
             });
@@ -398,6 +410,7 @@ document.$on('click', '.bz-menu-edit-bookmark', (e) => {
             });
     });
 
+    document.$('[data-bs-target="#flush-collapseBookmark"]').closest('.accordion-item').style.display = 'block';
     bookmarkFormEl.dataset['mode'] = 'edit';
     bookmarkSection.show();
 
@@ -426,7 +439,7 @@ bookmarkFormEl.$on('submit', (e) => {
 });
 
 function bookmarkEditFinished() {
-    if (bookmarkFormEl.dataset['mode'] == 'edit') {
+    if (!isLoadedToEdit && (bookmarkFormEl.dataset['mode'] == 'edit')) {
         backToSearch();
     } else {
         window.close();
