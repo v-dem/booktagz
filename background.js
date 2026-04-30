@@ -72,8 +72,8 @@ function updateIcon(tabId, url) {
 
 // Listen for tab updates (e.g., URL change within the same tab)
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (changeInfo.url) {
-        updateIcon(tabId, changeInfo.url);
+    if (tab.url) {
+        updateIcon(tabId, tab.url);
     }
 });
 
@@ -84,6 +84,7 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
     });
 });
 
+// Listen for page reload
 chrome.webNavigation.onCommitted.addListener((details) => {
     if (details.transitionType === 'reload') {
         updateIcon(details.tabId, details.url);

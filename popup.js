@@ -382,9 +382,11 @@ document.$on('click', '.bz-menu-edit-bookmark', (e) => {
     repository.loadBookmark(url).then((bookmark) => {
         urlInputEl.value = bookmark.url;
         titleInputEl.value = bookmark.title;
+        /*
         bookmark.tags.forEach((tag) => {
             tagsInputManager.check(tag);
         });
+        */
 
         window
             .fetch(bookmark.url)
