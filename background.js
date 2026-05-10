@@ -1,9 +1,13 @@
+import Repository from './scripts/Repository.js';
+
 async function getCurrentActiveTab() {
     let queryOptions = { active: true, lastFocusedWindow: true };
     let [ tab ] = await chrome.tabs.query(queryOptions);
 
     return tab;
 }
+
+const repository = new Repository();
 
 chrome.bookmarks.onCreated.addListener((id, bookmark) => {
     console.log("Bookmark created!");
@@ -40,27 +44,21 @@ const ICONS_ACTIVE = {
 
 function updateIcon(tabId, url) {
     if (url && !url.match(/^chrome:/)) {
-        const request = indexedDB.open('booktagzDb', 1);
-        request.onsuccess = function(e) {
-            const db = e.target.result;
-            const transaction = db.transaction([ 'bookmarks' ], 'readonly');
-            const store = transaction.objectStore('bookmarks');
-            store.get(url).onsuccess = (e) => {
-                if (e.target.result) {
-                    // Change icon to 'active'
-                    chrome.action.setIcon({
-                        path: ICONS_ACTIVE,
-                        tabId: tabId
-                    });
-                }
-            };
-            store.get(url).onerror = (e) => {
+        repository.loadBookmark(url).then((bookmark) => {
+            if (bookmark) {
+                // Change icon to 'active'
+                chrome.action.setIcon({
+                    path: ICONS_ACTIVE,
+                    tabId: tabId
+                });
+            } else {
+                // Revert to 'default' icon
                 chrome.action.setIcon({
                     path: ICONS_DEFAULT,
                     tabId: tabId
                 });
             }
-        }
+        });
     } else {
         // Revert to 'default' icon
         chrome.action.setIcon({
@@ -73,6 +71,7 @@ function updateIcon(tabId, url) {
 // Listen for tab updates (e.g., URL change within the same tab)
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (tab.url) {
+        console.log('chrome.tabs.onUpdated', tabId, changeInfo, tab);
         updateIcon(tabId, tab.url);
     }
 });
@@ -80,6 +79,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 // Listen for tab switching (e.g., changing active tab in a window)
 chrome.tabs.onActivated.addListener((activeInfo) => {
     chrome.tabs.get(activeInfo.tabId, (tab) => {
+        console.log('chrome.tabs.onActivated', activeInfo);
         updateIcon(activeInfo.tabId, tab.url);
     });
 });
@@ -87,6 +87,7 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
 // Listen for page reload
 chrome.webNavigation.onCommitted.addListener((details) => {
     if (details.transitionType === 'reload') {
+        console.log('chrome.webNavigation.onCommitted', details);
         updateIcon(details.tabId, details.url);
     }
 });

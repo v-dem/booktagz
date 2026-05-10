@@ -19,7 +19,8 @@ class PagedArrayDataSource {
 
     getPage(page) {
         if ((page >= this.pagesCount) || (page < 0)) {
-            throw new Error(`Page index ${page} is out of range (0..${this.pagesCount - 1})`);
+            // throw new Error(`Page index ${page} is out of range (0..${this.pagesCount - 1})`);
+            return null;
         }
 
         const startIndex = page * this.pageSize;
@@ -171,6 +172,10 @@ class PaginationBlockElement extends HTMLElement {
         container.replaceChildren();
 
         const pages = this.dataProvider.getPage(this.currentPage - 1);
+        if (!pages) {
+            return;
+        }
+
         for (let i = 0; i < pages.length; i++) {
             const templateContent = document.querySelector(this.dataset['rowTemplate']).content.cloneNode(true);
 

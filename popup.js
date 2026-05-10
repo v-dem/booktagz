@@ -57,6 +57,7 @@ const bookmarkFormEl = document.$('#bookmarkForm');
 const bookmarkSection = new bootstrap.Collapse(document.$('#flush-collapseBookmark'), {
     toggle: false
 });
+console.log(bookmarkSection);
 const searchSection = new bootstrap.Collapse(document.$('#flush-collapseSearch'), {
     toggle: false
 });
@@ -124,7 +125,7 @@ class Tag {
             }
         });
 
-const repository = new Repository(function() {
+const repository = new Repository(async function() {
     repository.loadTags().then((tags) => {
         tagsInputManager.setData(tags.map((tag) => {
             return {
@@ -132,6 +133,8 @@ const repository = new Repository(function() {
                 value: tag
             };
         }));
+
+        loadAndParsePage();
     });
 
     repository.loadTotals().then((totals) => {
@@ -144,8 +147,6 @@ const repository = new Repository(function() {
             document.$('#recentTagsPane').appendChild(new BookmarkTagElement(word));
         });
     });
-
-    loadAndParsePage();
 
     repository.loadMostUsed().then((mostUsed) => {
         mostUsed.forEach((tag) => {
@@ -190,9 +191,8 @@ class TagsManager {
     check(tag, shouldAddItem = true) {
         this.elements.forEach((element) => {
             if (element.dataset['tag'] === tag) {
-                element.$('button', (el) => {
-                    el.classList.add('active');
-                    el.ariaPressed = true;
+                element.$('.btn-check', (el) => {
+                    el.checked = true;
                 });
             }
         });
@@ -206,9 +206,8 @@ class TagsManager {
     uncheck(tag) {
         this.elements.forEach((element) => {
             if (element.dataset['tag'] === tag) {
-                element.$('button', (el) => {
-                    el.classList.remove('active');
-                    el.ariaPressed = false;
+                element.$('.btn-check', (el) => {
+                    el.checked = false;
                 });
             }
         });
@@ -223,14 +222,20 @@ class TagsManager {
 const tagsInputManager = new TagsManager(tagsInputEl);
 
 class BookmarkTagElement extends HTMLElement {
+    static idCounter = 0;
+
     constructor(tag) {
         super();
+
+        BookmarkTagElement.idCounter++;
 
         const templateContent = document.$('#bookmarkTagTemplate').content.cloneNode(true);
         this.appendChild(templateContent);
         this.dataset['tag'] = tag.word;
+        this.$('.btn-check').id = 'bzBookmarkTag-' + BookmarkTagElement.idCounter;
         this.$('.bz-tag-name').textContent = tag.word;
-        this.$('button').classList.add(
+        this.$('.bz-tag-name').htmlFor = 'bzBookmarkTag-' + BookmarkTagElement.idCounter;
+        this.$('.btn').classList.add(
             tag.isHighlighted
                 ? 'btn-outline-primary'
                 : 'btn-outline-secondary'
@@ -241,7 +246,7 @@ class BookmarkTagElement extends HTMLElement {
 
     connectedCallback() {
         this.$on('click', (e) => {
-            if (this.$('button').classList.contains('active')) {
+            if (this.$('.btn-check').checked) {
                 tagsInputManager.check(this.dataset['tag']);
             } else {
                 tagsInputManager.uncheck(this.dataset['tag']);
@@ -259,7 +264,8 @@ async function loadAndParsePage() { // Load page data manually
 
     // Hide "Add Bookmark" section and open "Search Bookmark" if current tab is blank or it's Chromium service page
     if (!tab || tab.url.match(/^chrome:/)) {
-        document.$('[data-bs-target="#flush-collapseBookmark"]').closest('.accordion-item').style.display = 'none';
+        searchSection._element.closest('.accordion-item').classList.remove('d-none');
+        settingsSection._element.closest('.accordion-item').classList.remove('d-none');
 
         searchSection.show();
         tagsSearchEl.focus();
@@ -273,6 +279,19 @@ async function loadAndParsePage() { // Load page data manually
     const hostname = (new URL(tab.url)).hostname.toLowerCase().replace(/^www\./, '');
 
     const activeTabId = tab.id;
+
+    const bookmark = await repository.loadBookmark(tab.url);
+    if (bookmark) {
+        bookmarkFormEl.dataset['mode'] = 'edit';
+
+        if (!isLoadedToEdit) {
+            isLoadedToEdit = true;
+        }
+
+        titleInputEl.value = bookmark.title;
+    }
+
+    bookmarkSection._element.closest('.accordion-item').classList.remove('d-none');
 
     chrome.scripting.executeScript(
         {
@@ -300,20 +319,11 @@ async function loadAndParsePage() { // Load page data manually
 
             document.$('#suggestedTagsPane').replaceChildren(...selectedTags.map((tag) => new BookmarkTagElement(tag)));
 
-            selectedTags.forEach((tag) => tagsInputManager.check(tag, false));
-
-            repository.loadBookmark(tab.url).then((bookmark) => {
-                if (bookmark) {
-                    if (!isLoadedToEdit) {
-                        isLoadedToEdit = true;
-                    }
-
-                    document.$('[data-bs-target="#flush-collapseSearch"]').closest('.accordion-item').style.display = 'none';
-                    document.$('[data-bs-target="#flush-collapseSettings"]').closest('.accordion-item').style.display = 'none';
-
-                    bookmarkFormEl.dataset['mode'] = 'edit';
-                }
-            });
+            if (bookmark) {
+                bookmark.tags.forEach((tag) => {
+                    tagsInputManager.check(tag, true);
+                });
+            }
         }
     );
 }
@@ -382,11 +392,6 @@ document.$on('click', '.bz-menu-edit-bookmark', (e) => {
     repository.loadBookmark(url).then((bookmark) => {
         urlInputEl.value = bookmark.url;
         titleInputEl.value = bookmark.title;
-        /*
-        bookmark.tags.forEach((tag) => {
-            tagsInputManager.check(tag);
-        });
-        */
 
         window
             .fetch(bookmark.url)
@@ -404,7 +409,9 @@ document.$on('click', '.bz-menu-edit-bookmark', (e) => {
 
                     document.$('#suggestedTagsPane').replaceChildren(...selectedTags.map((tag) => new BookmarkTagElement(tag)));
 
-                    selectedTags.forEach((tag) => tagsInputManager.check(tag, false));
+                    bookmark.tags.forEach((tag) => {
+                        tagsInputManager.check(tag, true);
+                    });
                 });
             })
             .catch((error) => {
@@ -412,7 +419,7 @@ document.$on('click', '.bz-menu-edit-bookmark', (e) => {
             });
     });
 
-    document.$('[data-bs-target="#flush-collapseBookmark"]').closest('.accordion-item').style.display = 'block';
+    bookmarkSection._element.closest('.accordion-item').classList.remove('d-none');
     bookmarkFormEl.dataset['mode'] = 'edit';
     bookmarkSection.show();
 
@@ -431,11 +438,11 @@ document.$('#removeBookmark').$on('click', (e) => {
     e.preventDefault();
 });
 
-bookmarkFormEl.$on('submit', (e) => {
+bookmarkFormEl.$on('submit', async (e) => {
     e.preventDefault();
 
     const inputTags = Tags.getInstance(tagsInputEl);
-    repository.storeBookmark(urlInputEl.value, titleInputEl.value, inputTags.getSelectedValues());
+    await repository.storeBookmark(urlInputEl.value, titleInputEl.value, inputTags.getSelectedValues());
 
     bookmarkEditFinished();
 });
@@ -451,9 +458,11 @@ function bookmarkEditFinished() {
 function backToSearch() {
     Tags.getInstance(tagsInputEl).removeAll();
 
-    loadAndParsePage();
+//    loadAndParsePage();
 
-    bookmarkFormEl.dataset['mode'] = 'new';
+//    bookmarkFormEl.dataset['mode'] = 'new';
+
+    bookmarkSection._element.closest('.accordion-item').classList.add('d-none');
 
     searchSection.show();
 }

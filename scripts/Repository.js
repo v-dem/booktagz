@@ -2,7 +2,7 @@ class Repository {
     constructor(onload = null) {
         this.onload = onload;
 
-        const request = window.indexedDB.open('booktagzDb', 1);
+        const request = indexedDB.open('booktagzDb', 1);
         request.onerror = (e) => {
             console.error('Why didn\'t you allow my web app to use IndexedDB?!');
             console.log(e);
@@ -43,7 +43,7 @@ class Repository {
         const objectStore = transaction.objectStore(store);
 
         const results = {};
-        Promise.all(keys.map(key => {
+        const p = Promise.all(keys.map(key => {
             return new Promise((resolve, reject) => {
                 const request = objectStore.get(key);
                 request.onsuccess = (e) => {
@@ -55,8 +55,9 @@ class Repository {
                     reject(e.target.error);
                 };
             });
-        }))
-        .then(() => {
+        }));
+
+        p.then(() => {
             callback(results);
         });
     }
@@ -86,76 +87,86 @@ class Repository {
                 reject(`storeBookmark() error: ${e.target.error?.message}`);
             };
 
-            // 1. Check all tags, if not exist create and add this url, if exist append this url
-            this.loadTagsSet(tags, (existingTags) => {
-                const tagsStore = transaction.objectStore('tags');
-                const newTags = [];
-                const removedTags = structuredClone(existingTags);
-                tags.forEach(tag => {
-                    if (typeof existingTags[tag] === 'undefined') {
-                        tagsStore.add({
-                            name: tag,
-                            urls: [ url ]
-                        });
+            // 1. Store a bookmark
+            const bookmarksStore = transaction.objectStore('bookmarks');
+            bookmarksStore.get(url).onsuccess = (e) => {
+                let oldTags = [];
+                const bookmark = e.target.result;
+                if (bookmark) {
+                    oldTags = e.target.result.tags;
 
-                        newTags.push(tag);
-                    } else {
-                        delete removedTags[tag];
-
-                        existingTags[tag].urls.push(url);
-
-                        tagsStore.put(existingTags[tag]);
-                    }
-                });
-
-                // 2. Remove URLs in removedTags
-                for (const [tag, tagRecord] of Object.entries(removedTags)) {
-                    console.log('---', tag, tagRecord);
-                    const urlIndex = tagRecord
-                        ? tagRecord.urls.indexOf(url)
-                        : -1;
-                    if (urlIndex > -1) {
-                        tagRecord.urls.splice(urlIndex, 1);
-                        if (tagRecord.urls.length) {
-                            tagsStore.put(tagRecord);
-                        } else {
-                            tagsStore.delete(tag);
-                        }
-                    }
+                    console.log('put', e.target.result);
+                    bookmarksStore.put({
+                        url: url,
+                        title: title,
+                        tags: tags
+                    });
+                } else {
+                    console.log('add');
+                    bookmarksStore.add({
+                        url: url,
+                        title: title,
+                        tags: tags
+                    });
                 }
 
-                // 3. Store a bookmark
-                const bookmarksStore = transaction.objectStore('bookmarks');
-                bookmarksStore.get(url).onsuccess = (e) => {
-                    if (e.target.result) {
-                        console.log('put', e.target.result);
-                        bookmarksStore.put({
-                            url: url,
-                            title: title,
-                            tags: tags
-                        });
-                    } else {
-                        console.log('add');
-                        bookmarksStore.add({
-                            url: url,
-                            title: title,
-                            tags: tags
-                        });
-                    }
-                };
+                // 2. Load tags with urls, if tag not exist create and add this url, if exist append this url
+                this.loadTagsSet(oldTags, (existingTags) => {
+                    console.log('existing', existingTags);
+                    const tagsStore = transaction.objectStore('tags');
+                    const newTags = [];
+                    const removedTags = structuredClone(existingTags);
+                    tags.forEach(tag => {
+                        if (removedTags[tag]) {
+                            delete removedTags[tag];
+                        }
 
-                // 4. Update totals
-                const totalsStore = transaction.objectStore('totals');
-                totalsStore.get(1).onsuccess = (e) => {
-                    const tagsObject = e.target.result;
-                    tagsObject.recentTags = [ ...tagsObject.recentTags, ...newTags ];
-                    if (tagsObject.recentTags.length > 10) {
-                        tagsObject.recentTags = tagsObject.recentTags.slice(-10);
+                        const tagCheck = tagsStore.get(tag);
+                        tagCheck.onsuccess = (e) => {
+                            if (e.target.result) {
+                                e.target.result.urls.push(url);
+
+                                tagsStore.put(e.target.result);
+                            } else {
+                                tagsStore.add({
+                                    name: tag,
+                                    urls: [ url ]
+                                });
+
+                                newTags.push(tag);
+                            }
+                        }
+                    });
+
+                    // 3. Remove URLs in removedTags
+                    for (const [tag, tagRecord] of Object.entries(removedTags)) {
+                        console.log('---', tag, tagRecord);
+                        const urlIndex = tagRecord
+                            ? tagRecord.urls.indexOf(url)
+                            : -1;
+                        if (urlIndex > -1) {
+                            tagRecord.urls.splice(urlIndex, 1);
+                            if (tagRecord.urls.length) {
+                                tagsStore.put(tagRecord);
+                            } else {
+                                tagsStore.delete(tag);
+                            }
+                        }
                     }
 
-                    totalsStore.put(tagsObject, 1);
-                };
-            }, transaction);
+                    // 4. Update totals
+                    const totalsStore = transaction.objectStore('totals');
+                    totalsStore.get(1).onsuccess = (e) => {
+                        const tagsObject = e.target.result;
+                        tagsObject.recentTags = [ ...tagsObject.recentTags, ...newTags ];
+                        if (tagsObject.recentTags.length > 10) {
+                            tagsObject.recentTags = tagsObject.recentTags.slice(-10);
+                        }
+
+                        totalsStore.put(tagsObject, 1);
+                    };
+                }, transaction);
+            };
         });
     }
 

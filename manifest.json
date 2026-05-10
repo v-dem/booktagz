@@ -29,6 +29,7 @@
         "*://*/*" // Required to fetch suggested tags for webpage in Edit Bookmark section
     ],
     "background": {
-        "service_worker": "background.js"
+        "service_worker": "background.js",
+        "type": "module"
     }
 }

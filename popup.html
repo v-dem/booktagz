@@ -86,10 +86,23 @@
                 white-space: nowrap;
             }
 
-            bookmark-tag button {
-                padding-top: 1px !important;
-                padding-bottom: 1px !important;
+            bz-bookmark-tag label {
+                margin-top: 2px;
+                margin-bottom: 2px;
             }
+
+            bz-bookmark-tag .btn:hover {
+                opacity: 0.7;
+            }
+
+            button.btn:hover {
+                outline: 2px solid hsl(from var(--bs-btn-active-border-color) h s l / 0.5);
+            }
+/*
+            [data-bs-theme="light"] button.btn:hover {
+                outline-color: color-mix(in srgb, var(--bs-btn-active-bg-color), black 50%);
+            }
+*/
         </style>
 
         <script src="assets/js/color-modes.js"></script>
@@ -98,7 +111,7 @@
 
     <body>
         <div class="accordion accordion-flush" id="accPanels">
-            <div class="accordion-item">
+            <div class="accordion-item d-none">
                 <form id="bookmarkForm" data-mode="new">
                     <h2 class="accordion-header">
                         <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseBookmark" aria-expanded="true" aria-controls="flush-collapseBookmark">
@@ -223,7 +236,7 @@
                 </form>
             </div>
 
-            <div class="accordion-item">
+            <div class="accordion-item d-none">
                 <h2 class="accordion-header">
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseSearch" aria-expanded="false" aria-controls="flush-collapseSearch">
                         <i class="bi bi-binoculars-fill text-success"></i>&nbsp;Search
@@ -232,52 +245,54 @@
 
                 <div id="flush-collapseSearch" class="accordion-collapse collapse" data-bs-parent="#accPanels">
                     <div class="accordion-body">
-                        <div class="row p-1">
-                            <div class="col-auto">
-                                <label for="searchTags" class="col-form-label pt-1"><i class="bi bi-tags"></i></label>
-                            </div>
-
-                            <div class="col">
-                                <div class="row">
-                                    <div class="col">
-                                        <select id="searchTags" name="searchTags[]" class="tags-select" title="Select or type in tags"
-                                                multiple
-                                                required
-                                                data-suggestions-threshold="1"
-                                                data-allow-clear="true"
-                                                data-clear-end="true"
-                                                data-starts-with="true"
-                                                data-add-on-blur="true">
-                                            <option selected disabled hidden value="">Select or type in tags...</option>
-                                        </select>
-                                    </div>
+                        <form role="search">
+                            <div class="row p-1">
+                                <div class="col-auto">
+                                    <label for="searchTags" class="col-form-label pt-1"><i class="bi bi-tags"></i></label>
                                 </div>
 
-                                <div class="row pt-1 pb-1">
-                                    <div class="col">
-                                        <ul class="nav nav-tabs" role="tablist">
-                                            <li class="nav-item" role="presentation">
-                                                <button class="nav-link pt-1 pb-1 disabled" id="suggestedTagsSearchTab" data-bs-toggle="tab" data-bs-target="#suggestedTagsSearchPane" type="button" role="tab" aria-controls="suggestedTagsSearchPane" aria-selected="false">Suggested</button>
-                                            </li>
+                                <div class="col">
+                                    <div class="row">
+                                        <div class="col">
+                                            <select id="searchTags" name="searchTags[]" class="tags-select" title="Select or type in tags"
+                                                    multiple
+                                                    required
+                                                    data-suggestions-threshold="1"
+                                                    data-allow-clear="true"
+                                                    data-clear-end="true"
+                                                    data-starts-with="true"
+                                                    data-add-on-blur="true">
+                                                <option selected disabled hidden value="">Select or type in tags...</option>
+                                            </select>
+                                        </div>
+                                    </div>
 
-                                            <li class="nav-item" role="presentation">
-                                                <button class="nav-link pt-1 pb-1 active" id="recentTagsSearchTab" data-bs-toggle="tab" data-bs-target="#recentTagsSearchPane" type="button" role="tab" aria-controls="recentTagsSearchPane" aria-selected="true">Recent</button>
-                                            </li>
+                                    <div class="row pt-1 pb-1">
+                                        <div class="col">
+                                            <ul class="nav nav-tabs" role="tablist">
+                                                <li class="nav-item" role="presentation">
+                                                    <button class="nav-link pt-1 pb-1 disabled" id="suggestedTagsSearchTab" data-bs-toggle="tab" data-bs-target="#suggestedTagsSearchPane" type="button" role="tab" aria-controls="suggestedTagsSearchPane" aria-selected="false">Suggested</button>
+                                                </li>
 
-                                            <li class="nav-item" role="presentation">
-                                                <button class="nav-link pt-1 pb-1" id="mostUsedTagsSearchTab" data-bs-toggle="tab" data-bs-target="#mostUsedTagsSearchPane" type="button" role="tab" aria-controls="mostUsedTagsSearchPane" aria-selected="false">Frequent</button>
-                                            </li>
-                                        </ul>
+                                                <li class="nav-item" role="presentation">
+                                                    <button class="nav-link pt-1 pb-1 active" id="recentTagsSearchTab" data-bs-toggle="tab" data-bs-target="#recentTagsSearchPane" type="button" role="tab" aria-controls="recentTagsSearchPane" aria-selected="true">Recent</button>
+                                                </li>
 
-                                        <div class="tab-content">
-                                            <div class="tab-pane p-1 fade" id="suggestedTagsSearchPane" role="tabpanel" aria-labelledby="suggestedTagsSearchTab" tabindex="0"></div>
-                                            <div class="tab-pane p-1 fade show active" id="recentTagsSearchPane" role="tabpanel" aria-labelledby="recentTagsSearchTab" tabindex="0"></div>
-                                            <div class="tab-pane p-1 fade" id="mostUsedTagsSearchPane" role="tabpanel" aria-labelledby="mostUsedTagsSearchTab" tabindex="0"></div>
+                                                <li class="nav-item" role="presentation">
+                                                    <button class="nav-link pt-1 pb-1" id="mostUsedTagsSearchTab" data-bs-toggle="tab" data-bs-target="#mostUsedTagsSearchPane" type="button" role="tab" aria-controls="mostUsedTagsSearchPane" aria-selected="false">Frequent</button>
+                                                </li>
+                                            </ul>
+
+                                            <div class="tab-content">
+                                                <div class="tab-pane p-1 fade" id="suggestedTagsSearchPane" role="tabpanel" aria-labelledby="suggestedTagsSearchTab" tabindex="0"></div>
+                                                <div class="tab-pane p-1 fade show active" id="recentTagsSearchPane" role="tabpanel" aria-labelledby="recentTagsSearchTab" tabindex="0"></div>
+                                                <div class="tab-pane p-1 fade" id="mostUsedTagsSearchPane" role="tabpanel" aria-labelledby="mostUsedTagsSearchTab" tabindex="0"></div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </form>
 
                         <table class="table table-striped table-hover table-borderless table-sm" style="width: inherit !important;">
                             <tbody id="bookmarksFound">
@@ -311,7 +326,7 @@
                 </div>
             </div>
 
-            <div class="accordion-item">
+            <div class="accordion-item d-none">
                 <h2 class="accordion-header">
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseSettings" aria-expanded="false" aria-controls="flush-collapseSettings">
                         <i class="bi bi-gear-fill text-info"></i>&nbsp;Settings
@@ -335,9 +350,8 @@
         </div>
 
         <template id="bookmarkTagTemplate">
-            <button type="button" class="btn btn-sm me-1 mt-1" data-bs-toggle="button">
-                <span class="bz-tag-name">CSS</span>
-            </button>
+            <input type="checkbox" class="btn-check" autocomplete="off">
+            <label class="btn btn-sm bz-tag-name"></label>
         </template>
 
         <script src="popup.js" type="module"></script>
