@@ -43,43 +43,50 @@ const ICONS_ACTIVE = {
 };
 
 function updateIcon(tabId, url) {
+    // Needed to solve "Unchecked runtime.lastError: No tab with id" issue
+    function updateCallback(result, e) {
+        if (chrome.runtime.lastError) {
+            // Ignore
+        }
+    }
+
     if (url && !url.match(/^chrome:/)) {
         repository.loadBookmark(url).then((bookmark) => {
-            if (bookmark) {
-                // Change icon to 'active'
-                chrome.action.setIcon({
-                    path: ICONS_ACTIVE,
-                    tabId: tabId
-                });
-            } else {
-                // Revert to 'default' icon
-                chrome.action.setIcon({
-                    path: ICONS_DEFAULT,
-                    tabId: tabId
-                });
-            }
+                if (bookmark) {
+                    // Change icon to 'active'
+                    chrome.action.setIcon({
+                        path: ICONS_ACTIVE,
+                        tabId: tabId
+                    }, updateCallback);
+                } else {
+                    // Revert to 'default' icon
+                    chrome.action.setIcon({
+                        path: ICONS_DEFAULT,
+                        tabId: tabId
+                    }, updateCallback);
+                }
         });
     } else {
         // Revert to 'default' icon
         chrome.action.setIcon({
             path: ICONS_DEFAULT,
             tabId: tabId
-        });
+        }, updateCallback);
     }
 }
 
 // Listen for tab updates (e.g., URL change within the same tab)
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (tab.url) {
-        console.log('chrome.tabs.onUpdated', tabId, changeInfo, tab);
-        updateIcon(tabId, tab.url);
+    if (!tab.url) {
+        return;
     }
+
+    updateIcon(tabId, tab.url);
 });
 
 // Listen for tab switching (e.g., changing active tab in a window)
 chrome.tabs.onActivated.addListener((activeInfo) => {
     chrome.tabs.get(activeInfo.tabId, (tab) => {
-        console.log('chrome.tabs.onActivated', activeInfo);
         updateIcon(activeInfo.tabId, tab.url);
     });
 });
@@ -87,7 +94,6 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
 // Listen for page reload
 chrome.webNavigation.onCommitted.addListener((details) => {
     if (details.transitionType === 'reload') {
-        console.log('chrome.webNavigation.onCommitted', details);
         updateIcon(details.tabId, details.url);
     }
 });
