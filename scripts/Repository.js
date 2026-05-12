@@ -117,16 +117,18 @@ class Repository {
                     const newTags = [];
                     const removedTags = structuredClone(existingTags);
                     tags.forEach(tag => {
-                        if (removedTags[tag]) {
+                        if (existingTags[tag]) {
                             delete removedTags[tag];
                         }
 
                         const tagCheck = tagsStore.get(tag);
                         tagCheck.onsuccess = (e) => {
                             if (e.target.result) {
-                                e.target.result.urls.push(url);
+                                if (-1 === e.target.result.urls.indexOf(url)) {
+                                    e.target.result.urls.push(url);
 
-                                tagsStore.put(e.target.result);
+                                    tagsStore.put(e.target.result);
+                                }
                             } else {
                                 tagsStore.add({
                                     name: tag,

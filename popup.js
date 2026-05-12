@@ -125,7 +125,7 @@ class Tag {
             }
         });
 
-const repository = new Repository(async function() {
+const repository = new Repository(async () => {
     repository.loadTags().then((tags) => {
         tagsInputManager.setData(tags.map((tag) => {
             return {
@@ -287,8 +287,6 @@ async function loadAndParsePage() { // Load page data manually
         if (!isLoadedToEdit) {
             isLoadedToEdit = true;
         }
-
-        titleInputEl.value = bookmark.title;
     }
 
     bookmarkSection._element.closest('.accordion-item').classList.remove('d-none');
@@ -320,6 +318,8 @@ async function loadAndParsePage() { // Load page data manually
             document.$('#suggestedTagsPane').replaceChildren(...selectedTags.map((tag) => new BookmarkTagElement(tag)));
 
             if (bookmark) {
+                titleInputEl.value = bookmark.title;
+
                 bookmark.tags.forEach((tag) => {
                     tagsInputManager.check(tag, true);
                 });
