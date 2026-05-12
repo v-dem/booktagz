@@ -380,6 +380,16 @@ document.$on('click', '.bz-menu-open-bookmark', (e) => {
     e.target.closest('.bz-bookmark-row').$('.bz-bookmark-link').click();
 });
 
+document.$on('click', '.bz-menu-remove-bookmark', (e) => {
+    const url = e.target.closest('.bz-bookmark-row').$('.bz-bookmark-link').href;
+
+    if (window.confirm('Are you sure you want to remove this bookmark?')) {
+        repository.removeBookmark(url).then(() => {
+            e.target.closest('.bz-bookmark-row').classList.add('removed');
+        });
+    }
+});
+
 document.$on('click', '.bz-bookmark-link', (e) => {
     // e.preventDefault();
 });
@@ -435,7 +445,7 @@ document.$on('click', '#cancelBookmarkEdit', (e) => {
 });
 
 document.$('#removeBookmark').$on('click', (e) => {
-    e.preventDefault();
+    // TODO:
 });
 
 bookmarkFormEl.$on('submit', async (e) => {

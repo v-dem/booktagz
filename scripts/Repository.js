@@ -172,6 +172,44 @@ class Repository {
         });
     }
 
+    removeBookmark(url) {
+        return new Promise((resolve, reject) => {
+            const transaction = this.idb.transaction([ 'tags', 'bookmarks', 'totals' ], 'readwrite');
+            transaction.oncomplete = function() {
+                resolve();
+            };
+            transaction.onerror = (e) => {
+                reject(`removeBookmark() error: ${e.target.error?.message}`);
+            };
+
+            // 1. Get a bookmark record
+            const bookmarksStore = transaction.objectStore('bookmarks');
+            bookmarksStore.get(url).onsuccess = (e) => {
+                const bookmark = e.target.result;
+
+                bookmarksStore.delete(url);
+
+                // 2. Load tags with urls
+                this.loadTagsSet(bookmark.tags, (tags) => {
+                    // 3. Remove URLs from tags / Remove empty tags
+                    for (const [tag, tagRecord] of Object.entries(tags)) {
+                        const urlIndex = tagRecord
+                            ? tagRecord.urls.indexOf(url)
+                            : -1;
+                        if (urlIndex > -1) {
+                            tagRecord.urls.splice(urlIndex, 1);
+                            if (tagRecord.urls.length) {
+                                tagsStore.put(tagRecord);
+                            } else {
+                                tagsStore.delete(tag);
+                            }
+                        }
+                    }
+                }, transaction);
+            };
+        });
+    }
+
     loadTotals() {
         return new Promise((resolve, reject) => {
             const transaction = this.idb.transaction([ 'totals' ], 'readonly');

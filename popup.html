@@ -103,6 +103,18 @@
                 outline-color: color-mix(in srgb, var(--bs-btn-active-bg-color), black 50%);
             }
 */
+            tr.bz-bookmark-row.removed td.bz-bookmark-cell:first-child::before {
+                content: '[REMOVED]';
+                color: rgb(var(--bs-danger-rgb));
+            }
+
+            tr.bz-bookmark-row.removed td.bz-bookmark-actions * {
+                display: none;
+            }
+
+            tr.bz-bookmark-row.removed {
+                pointer-events: none;
+            }
         </style>
 
         <script src="assets/js/color-modes.js"></script>
@@ -188,7 +200,8 @@
                                                     data-clear-end="true"
                                                     data-starts-with="true"
                                                     data-add-on-blur="true"
-                                                    data-allow-new="true">
+                                                    data-allow-new="true"
+                                                    data-autoselect-first="false">
                                                 <option selected disabled hidden value="">Select or type in tags...</option>
                                             </select>
                                         </div>
