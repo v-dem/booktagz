@@ -383,9 +383,11 @@ document.$on('click', '.bz-menu-open-bookmark', (e) => {
 document.$on('click', '.bz-menu-remove-bookmark', (e) => {
     const url = e.target.closest('.bz-bookmark-row').$('.bz-bookmark-link').href;
 
-    if (window.confirm('Are you sure you want to remove this bookmark?')) {
+    if (window.confirm('Remove this bookmark?')) {
         repository.removeBookmark(url).then(() => {
             e.target.closest('.bz-bookmark-row').classList.add('removed');
+
+            chrome.runtime.sendMessage({ command: "check" });
         });
     }
 });
@@ -395,7 +397,14 @@ document.$on('click', '.bz-bookmark-link', (e) => {
 });
 
 document.$on('click', '.bz-menu-edit-bookmark', (e) => {
-    const url = e.target.closest('.bz-bookmark-row').$('.bz-bookmark-link').href;
+    if (document.$('#bookmarksFound .editing')) {
+        document.$('#bookmarksFound .editing').classList.remove('editing');
+    }
+
+    const rowEl = e.target.closest('.bz-bookmark-row');
+    rowEl.classList.add('editing');
+
+    const url = rowEl.$('.bz-bookmark-link').href;
 
     Tags.getInstance(tagsInputEl).removeAll();
 
@@ -445,7 +454,7 @@ document.$on('click', '#cancelBookmarkEdit', (e) => {
 });
 
 document.$('#removeBookmark').$on('click', (e) => {
-    // TODO:
+    e.preventDefault();
 });
 
 bookmarkFormEl.$on('submit', async (e) => {
@@ -458,6 +467,8 @@ bookmarkFormEl.$on('submit', async (e) => {
 });
 
 function bookmarkEditFinished() {
+    chrome.runtime.sendMessage({ command: "check" });
+
     if (!isLoadedToEdit && (bookmarkFormEl.dataset['mode'] == 'edit')) {
         backToSearch();
     } else {

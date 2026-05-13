@@ -192,6 +192,7 @@ class Repository {
                 // 2. Load tags with urls
                 this.loadTagsSet(bookmark.tags, (tags) => {
                     // 3. Remove URLs from tags / Remove empty tags
+                    const tagsStore = transaction.objectStore('tags');
                     for (const [tag, tagRecord] of Object.entries(tags)) {
                         const urlIndex = tagRecord
                             ? tagRecord.urls.indexOf(url)

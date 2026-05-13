@@ -79,7 +79,7 @@ const repository = new Repository(() => {
             return;
         }
 
-    updateIcon(tabId, tab.url);
+        updateIcon(tabId, tab.url);
     });
 
     // Listen for tab switching (e.g., changing active tab in a window)
@@ -94,6 +94,18 @@ const repository = new Repository(() => {
         if (details.transitionType === 'reload') {
             updateIcon(details.tabId, details.url);
         }
+    });
+
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.command === 'check') {
+            getCurrentActiveTab().then((tab) => {
+                if (tab) {
+                    updateIcon(tab.id, tab.url);
+                }
+            });
+        }
+
+        return true;
     });
 });
 
