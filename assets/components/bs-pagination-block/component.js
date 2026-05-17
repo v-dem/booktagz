@@ -38,7 +38,7 @@ class PaginationBlockElement extends HTMLElement {
     }
 
     async connectedCallback() {
-        const response = await fetch(import.meta.url.replace(/\.js/, '.html'));
+        const response = await fetch(import.meta.url.replace(/\.js/, '.html')); // Load component HTML template
 
         this.innerHTML = await response.text();
 
@@ -59,7 +59,11 @@ class PaginationBlockElement extends HTMLElement {
     setDataProvider(dataProvider) {
         this.dataProvider = dataProvider;
 
-        this.switchToPage(1);
+        if (this.dataProvider.getPagesCount() - 1 < this.currentPage) {
+            this.currentPage = this.dataProvider.getPagesCount() - 1;
+        }
+
+        this.switchToPage(this.currentPage);
     }
 
     switchToPage(page) {

@@ -97,8 +97,11 @@ const repository = new Repository(() => {
     });
 
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        console.log('check0');
         if (message.command === 'check') {
+            console.log('check');
             getCurrentActiveTab().then((tab) => {
+                console.log(tab);
                 if (tab) {
                     updateIcon(tab.id, tab.url);
                 }

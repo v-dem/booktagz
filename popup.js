@@ -159,9 +159,7 @@ const repository = new Repository(async () => {
         });
     });
 
-    repository.loadBookmarksFiltered([], (bookmarks) => {
-        document.$('bs-pagination-block').setDataProvider(new PagedArrayDataSource(bookmarks));
-    });
+    loadBookmarksTable();
 });
 
 class TagsManager {
@@ -383,13 +381,7 @@ document.$on('click', '.bz-menu-open-bookmark', (e) => {
 document.$on('click', '.bz-menu-remove-bookmark', (e) => {
     const url = e.target.closest('.bz-bookmark-row').$('.bz-bookmark-link').href;
 
-    if (window.confirm('Remove this bookmark?')) {
-        repository.removeBookmark(url).then(() => {
-            e.target.closest('.bz-bookmark-row').classList.add('removed');
-
-            chrome.runtime.sendMessage({ command: "check" });
-        });
-    }
+    bookmarkConfirmRemove(url);
 });
 
 document.$on('click', '.bz-bookmark-link', (e) => {
@@ -397,13 +389,7 @@ document.$on('click', '.bz-bookmark-link', (e) => {
 });
 
 document.$on('click', '.bz-menu-edit-bookmark', (e) => {
-    if (document.$('#bookmarksFound .editing')) {
-        document.$('#bookmarksFound .editing').classList.remove('editing');
-    }
-
     const rowEl = e.target.closest('.bz-bookmark-row');
-    rowEl.classList.add('editing');
-
     const url = rowEl.$('.bz-bookmark-link').href;
 
     Tags.getInstance(tagsInputEl).removeAll();
@@ -454,7 +440,7 @@ document.$on('click', '#cancelBookmarkEdit', (e) => {
 });
 
 document.$('#removeBookmark').$on('click', (e) => {
-    e.preventDefault();
+    bookmarkConfirmRemove(urlInputEl.value);
 });
 
 bookmarkFormEl.$on('submit', async (e) => {
@@ -467,9 +453,11 @@ bookmarkFormEl.$on('submit', async (e) => {
 });
 
 function bookmarkEditFinished() {
-    chrome.runtime.sendMessage({ command: "check" });
+    chrome.runtime.sendMessage({ command: 'check' });
 
     if (!isLoadedToEdit && (bookmarkFormEl.dataset['mode'] == 'edit')) {
+        loadBookmarksTable();
+
         backToSearch();
     } else {
         window.close();
@@ -486,5 +474,21 @@ function backToSearch() {
     bookmarkSection._element.closest('.accordion-item').classList.add('d-none');
 
     searchSection.show();
+}
+
+function loadBookmarksTable() {
+    repository.loadBookmarksFiltered([], (bookmarks) => {
+        document.$('bs-pagination-block').setDataProvider(new PagedArrayDataSource(bookmarks));
+    });
+}
+
+function bookmarkConfirmRemove(url) {
+    if (window.confirm('Remove this bookmark?')) {
+        repository.removeBookmark(url).then(() => {
+            bookmarkEditFinished();
+        }).catch((e) => {
+            console.error(e)
+        });
+    }
 }
 
